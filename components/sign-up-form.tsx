@@ -2,16 +2,6 @@
 
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -20,9 +10,10 @@ export function SignUpForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [repeatPassword, setRepeatPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -33,7 +24,7 @@ export function SignUpForm({
     setIsLoading(true);
     setError(null);
 
-    if (password !== repeatPassword) {
+    if (password !== confirmPassword) {
       setError("Passwords do not match");
       setIsLoading(false);
       return;
@@ -45,6 +36,9 @@ export function SignUpForm({
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/protected`,
+          data: {
+            full_name: fullName,
+          },
         },
       });
       if (error) throw error;
@@ -57,64 +51,124 @@ export function SignUpForm({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Sign up</CardTitle>
-          <CardDescription>Create a new account</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSignUp}>
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
+    <div
+      className={cn(
+        "flex items-center justify-center min-h-screen bg-backgrounds-veryLight p-4 sm:p-6 lg:p-8",
+        className
+      )}
+      {...props}
+    >
+      <div className="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl">
+        <div className="card bg-base-100 shadow-xl border border-gray-200 rounded-2xl">
+          <div className="card-body p-6 sm:p-8 md:p-10 lg:p-12">
+            {/* Header */}
+            <div className="text-center mb-8 sm:mb-10 md:mb-12">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-text-purplePrimary mb-3 md:mb-4">
+                Join AI Prayer Partner
+              </h1>
+              <p className="text-sm sm:text-base md:text-lg text-text-graySecondary max-w-md mx-auto leading-relaxed">
+                Start your consistent prayer journey today
+              </p>
+            </div>
+
+            <form
+              onSubmit={handleSignUp}
+              className="space-y-5 sm:space-y-6 md:space-y-7"
+            >
+              {/* Full Name */}
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend text-sm sm:text-base font-medium text-text-grayPrimary">
+                  Full Name
+                </legend>
+                <input
+                  type="text"
+                  placeholder="Enter your full name"
+                  className="w-full input h-12 sm:h-13 md:h-14 border-gray-200 text-text-grayPrimary placeholder:text-text-graySecondary focus:border-text-purplePrimary focus:outline-text-purplePrimary text-sm sm:text-base md:text-lg px-4 rounded-xl transition-all duration-200"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
+              </fieldset>
+
+              {/* Email */}
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend text-sm sm:text-base font-medium text-text-grayPrimary">
+                  Email
+                </legend>
+                <input
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder="Enter your email"
+                  className="w-full input h-12 sm:h-13 md:h-14 border-gray-200 text-text-grayPrimary placeholder:text-text-graySecondary focus:border-text-purplePrimary focus:outline-text-purplePrimary text-sm sm:text-base md:text-lg px-4 rounded-xl transition-all duration-200"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
-              </div>
-              <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
-                </div>
-                <Input
-                  id="password"
+              </fieldset>
+
+              {/* Password */}
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend text-sm sm:text-base font-medium text-text-grayPrimary">
+                  Password
+                </legend>
+                <input
                   type="password"
+                  placeholder="Create a password"
+                  className="w-full input h-12 sm:h-13 md:h-14 border-gray-200 text-text-grayPrimary placeholder:text-text-graySecondary focus:border-text-purplePrimary focus:outline-text-purplePrimary text-sm sm:text-base md:text-lg px-4 rounded-xl transition-all duration-200"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
-              </div>
-              <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="repeat-password">Repeat Password</Label>
-                </div>
-                <Input
-                  id="repeat-password"
+              </fieldset>
+
+              {/* Confirm Password */}
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend text-sm sm:text-base font-medium text-text-grayPrimary">
+                  Confirm Password
+                </legend>
+                <input
                   type="password"
+                  placeholder="Confirm your password"
+                  className="w-full input h-12 sm:h-13 md:h-14 border-gray-200 text-text-grayPrimary placeholder:text-text-graySecondary focus:border-text-purplePrimary focus:outline-text-purplePrimary text-sm sm:text-base md:text-lg px-4 rounded-xl transition-all duration-200"
                   required
-                  value={repeatPassword}
-                  onChange={(e) => setRepeatPassword(e.target.value)}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                 />
+              </fieldset>
+
+              {/* Error Message */}
+              {error && (
+                <div className="alert alert-error bg-red-50 border-red-200 text-red-600">
+                  <span className="text-sm">{error}</span>
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="btn w-full h-12 sm:h-13 md:h-14 bg-text-purplePrimary hover:bg-text-purplePrimary/90 text-white border-none font-semibold text-sm sm:text-base md:text-lg rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50"
+                >
+                  {isLoading ? "Creating Account..." : "Create Account"}
+                </button>
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating an account..." : "Sign up"}
-              </Button>
+            </form>
+
+            {/* Sign In Link */}
+            <div className="mt-6 sm:mt-8 md:mt-10 text-center">
+              <p className="text-sm sm:text-base md:text-lg text-text-graySecondary">
+                Already have an account?{" "}
+                <Link
+                  href="/auth/login"
+                  className="text-text-purplePrimary font-semibold hover:underline transition-all duration-200"
+                >
+                  Sign in
+                </Link>
+              </p>
             </div>
-            <div className="mt-4 text-center text-sm">
-              Already have an account?{" "}
-              <Link href="/auth/login" className="underline underline-offset-4">
-                Login
-              </Link>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
