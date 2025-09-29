@@ -37,13 +37,13 @@ export function ForgotPasswordForm({
   return (
     <div
       className={cn(
-        "flex items-center justify-center min-h-screen bg-backgrounds-veryLight p-4 sm:p-6 lg:p-8",
+        "flex items-center justify-center min-h-screen bg-base-100 sm:bg-backgrounds-veryLight",
         className
       )}
       {...props}
     >
-      <div className="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl">
-        <div className="card bg-base-100 shadow-xl border border-gray-200 rounded-2xl">
+      <div className="w-full sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl">
+        <div className="card sm:shadow-xl sm:border sm:border-gray-200 sm:rounded-2xl sm:bg-base-100">
           <div className="card-body p-6 sm:p-8 md:p-10 lg:p-12">
             {success ? (
               /* Success State */

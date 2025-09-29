@@ -2,16 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -20,21 +11,27 @@ export function UpdatePasswordForm({
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
+  const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     const supabase = createClient();
     setIsLoading(true);
     setError(null);
 
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      // Update this route to redirect to an authenticated route. The user already has an active session.
-      router.push("/protected");
+      router.push("/home");
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
@@ -43,36 +40,94 @@ export function UpdatePasswordForm({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Reset Your Password</CardTitle>
-          <CardDescription>
-            Please enter your new password below.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleForgotPassword}>
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="password">New password</Label>
-                <Input
-                  id="password"
+    <div
+      className={cn(
+        "flex items-center justify-center min-h-screen bg-base-100 sm:bg-backgrounds-veryLight",
+        className
+      )}
+      {...props}
+    >
+      <div className="w-full sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl">
+        <div className="card sm:shadow-xl sm:border sm:border-gray-200 sm:rounded-2xl sm:bg-base-100">
+          <div className="card-body p-6 sm:p-8 md:p-10 lg:p-12">
+            {/* Header */}
+            <div className="text-center mb-8 sm:mb-10 md:mb-12">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-text-purplePrimary mb-3 md:mb-4">
+                Reset Your Password
+              </h1>
+              <p className="text-sm sm:text-base md:text-lg text-text-graySecondary max-w-md mx-auto leading-relaxed">
+                Please enter your new password below
+              </p>
+            </div>
+
+            <form
+              onSubmit={handleUpdatePassword}
+              className="space-y-5 sm:space-y-6 md:space-y-7"
+            >
+              {/* Password */}
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend text-sm sm:text-base font-medium text-text-grayPrimary">
+                  New Password
+                </legend>
+                <input
                   type="password"
-                  placeholder="New password"
+                  placeholder="Enter new password"
+                  className="w-full input h-12 sm:h-13 md:h-14 border-gray-200 text-text-grayPrimary placeholder:text-text-graySecondary focus:border-text-purplePrimary focus:outline-text-purplePrimary text-sm sm:text-base md:text-lg px-4 rounded-xl transition-all duration-200"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+              </fieldset>
+
+              {/* Confirm Password */}
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend text-sm sm:text-base font-medium text-text-grayPrimary">
+                  Confirm Password
+                </legend>
+                <input
+                  type="password"
+                  placeholder="Confirm new password"
+                  className="w-full input h-12 sm:h-13 md:h-14 border-gray-200 text-text-grayPrimary placeholder:text-text-graySecondary focus:border-text-purplePrimary focus:outline-text-purplePrimary text-sm sm:text-base md:text-lg px-4 rounded-xl transition-all duration-200"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </fieldset>
+
+              {/* Error Message */}
+              {error && (
+                <div className="alert alert-error bg-red-50 border-red-200 text-red-600">
+                  <span className="text-sm">{error}</span>
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="btn w-full h-12 sm:h-13 md:h-14 bg-text-purplePrimary hover:bg-text-purplePrimary/90 text-white border-none font-semibold text-sm sm:text-base md:text-lg rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50"
+                >
+                  {isLoading ? "Updating..." : "Update Password"}
+                </button>
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Saving..." : "Save new password"}
-              </Button>
+            </form>
+
+            {/* Back to Login Link */}
+            <div className="mt-6 sm:mt-8 md:mt-10 text-center">
+              <p className="text-sm sm:text-base md:text-lg text-text-graySecondary">
+                Remember your password?{" "}
+                <Link
+                  href="/auth/login"
+                  className="text-text-purplePrimary font-semibold hover:underline transition-all duration-200"
+                >
+                  Sign in
+                </Link>
+              </p>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

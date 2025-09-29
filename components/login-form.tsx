@@ -39,13 +39,13 @@ export function LoginForm({
   return (
     <div
       className={cn(
-        "flex items-center justify-center min-h-screen bg-backgrounds-veryLight p-4 sm:p-6 lg:p-8",
+        "flex items-center justify-center min-h-screen bg-base-100 sm:bg-backgrounds-veryLight",
         className
       )}
       {...props}
     >
-      <div className="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl">
-        <div className="card bg-base-100 shadow-xl border border-gray-200 rounded-2xl">
+      <div className="w-full sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl">
+        <div className="card sm:shadow-xl sm:border sm:border-gray-200 sm:rounded-2xl sm:bg-base-100">
           <div className="card-body p-6 sm:p-8 md:p-10 lg:p-12">
             {/* Header */}
             <div className="text-center mb-8 sm:mb-10 md:mb-12">
@@ -57,7 +57,10 @@ export function LoginForm({
               </p>
             </div>
 
-            <form onSubmit={handleLogin} className="space-y-5 sm:space-y-6 md:space-y-7">
+            <form
+              onSubmit={handleLogin}
+              className="space-y-5 sm:space-y-6 md:space-y-7"
+            >
               {/* Email */}
               <fieldset className="fieldset">
                 <legend className="fieldset-legend text-sm sm:text-base font-medium text-text-grayPrimary">
