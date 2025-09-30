@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Your prayer and reminder app",
     start_url: "/home",
     display: "standalone",
-    background_color: "#ffffff",
-    theme_color: "#000000",
+    background_color: "#fafafa",
+    theme_color: "#fafafa",
     orientation: "portrait",
     icons: [
       {
