@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Prayerly",
     short_name: "Prayerly",
     description: "Your prayer and reminder app",
-    start_url: "/",
+    start_url: "/home",
     display: "standalone",
     background_color: "#ffffff",
     theme_color: "#000000",
