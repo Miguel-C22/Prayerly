@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import Badge from "@/components/badge/Badge";
 import Icon from "@/components/icon/Icon";
+import ConfirmDeleteModal from "../modals/ConfirmDeleteModal";
 
 interface PrayerCardProps {
   id: string;
@@ -13,6 +14,7 @@ interface PrayerCardProps {
   hideBtn?: boolean;
   onTitleChange?: (title: string) => void;
   onDescriptionChange?: (description: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 function PrayerCard({
@@ -26,11 +28,41 @@ function PrayerCard({
   hideBtn = false,
   onTitleChange,
   onDescriptionChange,
+  onDelete,
 }: PrayerCardProps) {
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering card click
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = () => {
+    onDelete?.(id);
+    setShowDeleteModal(false);
+  };
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm relative">
+      {/* Delete button - only show when not in edit mode */}
+      {!edit && onDelete && (
+        <>
+          <button
+            onClick={handleDeleteClick}
+            className="absolute top-3 right-3 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+            aria-label="Delete prayer"
+          >
+            <Icon icon="trash" className="w-5 h-5" />
+          </button>
+          <ConfirmDeleteModal
+            isOpen={showDeleteModal}
+            onConfirm={handleConfirmDelete}
+            onCancel={() => setShowDeleteModal(false)}
+          />
+        </>
+      )}
+
       {/* Header with title and category */}
-      <div className="flex justify-between items-start mb-2 gap-2">
+      <div className="flex justify-between items-start mb-2 gap-2 pr-10">
         {edit ? (
           <input
             type="text"

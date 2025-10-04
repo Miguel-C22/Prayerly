@@ -117,3 +117,36 @@ export async function updatePrayer(
     return null;
   }
 }
+
+export async function deletePrayer(prayerId: string): Promise<boolean> {
+  try {
+    const supabase = createClient();
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      console.log("No authenticated user");
+      return false;
+    }
+
+    // Delete the prayer from the database
+    const { error } = await supabase
+      .from("prayers")
+      .delete()
+      .eq("id", prayerId)
+      .eq("user_id", user.id); // Ensure user can only delete their own prayers
+
+    if (error) {
+      console.error("Database error:", error);
+      throw error;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting prayer:", error);
+    return false;
+  }
+}

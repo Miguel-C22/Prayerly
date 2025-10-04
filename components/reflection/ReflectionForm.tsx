@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Icon from "@/components/icon/Icon";
 import reflectionSubmission from "@/utils/reflectionSubmission";
 import { UIReflection } from "@/utils/client/reflectionsClient";
+import LoadingOverlay from "../loading/LoadingOverlay";
 
 interface ReflectionFormProps {
   prayerId: string;
@@ -37,8 +38,10 @@ function ReflectionForm({ prayerId, onAddReflection }: ReflectionFormProps) {
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6">
-      {/* Header */}
+    <>
+      <LoadingOverlay isLoading={isSubmitting} message="Saving reflection..." />
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <Icon icon="bible" className="w-5 h-5 text-text-purplePrimary" />
         <h3 className="text-lg font-semibold text-text-grayPrimary">
@@ -58,11 +61,12 @@ function ReflectionForm({ prayerId, onAddReflection }: ReflectionFormProps) {
       <button
         className="btn bg-text-purplePrimary hover:bg-purple-600 text-white border-none"
         onClick={handleSave}
-        disabled={!reflection.trim() || isSubmitting}
+        disabled={!reflection.trim()}
       >
-        {isSubmitting ? "Saving..." : "Save Reflection"}
+        Save Reflection
       </button>
-    </div>
+      </div>
+    </>
   );
 }
 

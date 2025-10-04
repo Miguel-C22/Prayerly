@@ -7,7 +7,7 @@ export const homeContent: HeaderContent = {
   customButton: () => (
     <label
       htmlFor="add-prayer"
-      className="btn btn-primary btn-sm px-3 flex items-center gap-4"
+      className="btn btn-primary  px-3 flex items-center gap-4"
     >
       <span>+</span>
       Add Prayer

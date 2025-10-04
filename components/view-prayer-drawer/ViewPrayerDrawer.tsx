@@ -12,6 +12,7 @@ import {
 } from "@/utils/client/reflectionsClient";
 import { updatePrayer } from "@/utils/client/prayersClient";
 import { useRouter } from "next/navigation";
+import LoadingOverlay from "../loading/LoadingOverlay";
 
 interface ViewPrayerDrawerProps {
   prayerDetails: Prayer | null;
@@ -26,7 +27,9 @@ function ViewPrayerDrawer({
   const [currentReflections, setCurrentReflections] = useState<UIReflection[]>(
     []
   );
-  const [, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isMarkingAnswered, setIsMarkingAnswered] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editablePrayer, setEditablePrayer] = useState({
@@ -85,10 +88,17 @@ function ViewPrayerDrawer({
   };
 
   const markedAsAnswered = async () => {
-    await updatePrayer(prayerDetails?.id || "", {
-      is_answered: !prayerDetails?.is_answered,
-    });
-    setHasChanges(true);
+    setIsMarkingAnswered(true);
+    try {
+      await updatePrayer(prayerDetails?.id || "", {
+        is_answered: !prayerDetails?.is_answered,
+      });
+      setHasChanges(true);
+    } catch (error) {
+      console.error("Failed to mark as answered:", error);
+    } finally {
+      setIsMarkingAnswered(false);
+    }
   };
 
   const closeDrawer = () => {
@@ -136,19 +146,26 @@ function ViewPrayerDrawer({
   };
 
   const saveAllChanges = async () => {
-    await savePrayer();
+    setIsSaving(true);
+    try {
+      await savePrayer();
 
-    // Save all changed reflections
-    for (const [reflectionId, newText] of Object.entries(editableReflections)) {
-      const originalReflection = currentReflections.find(
-        (r) => r.id === reflectionId
-      );
-      if (originalReflection && originalReflection.reflection !== newText) {
-        await saveReflection(reflectionId, newText);
+      // Save all changed reflections
+      for (const [reflectionId, newText] of Object.entries(editableReflections)) {
+        const originalReflection = currentReflections.find(
+          (r) => r.id === reflectionId
+        );
+        if (originalReflection && originalReflection.reflection !== newText) {
+          await saveReflection(reflectionId, newText);
+        }
       }
-    }
 
-    setEditMode(false);
+      setEditMode(false);
+    } catch (error) {
+      console.error("Failed to save changes:", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const cancelEditedChanges = () => {
@@ -171,9 +188,12 @@ function ViewPrayerDrawer({
   };
 
   return (
-    <div className="drawer z-40">
-      <input id="view-prayer" type="checkbox" className="drawer-toggle" />
-      <div className="drawer-side">
+    <>
+      <LoadingOverlay isLoading={isMarkingAnswered} message="Marking as answered..." />
+      <LoadingOverlay isLoading={isSaving} message="Saving changes..." />
+      <div className="drawer z-40">
+        <input id="view-prayer" type="checkbox" className="drawer-toggle" />
+        <div className="drawer-side">
         <label
           htmlFor="view-prayer"
           aria-label="close sidebar"
@@ -244,39 +264,45 @@ function ViewPrayerDrawer({
                   prayerId={prayerDetails?.id || ""}
                   onAddReflection={handleAddReflection}
                 />
-                <ReflectionContainer
-                  reflections={
-                    editMode
-                      ? currentReflections.map((r) => ({
-                          ...r,
-                          reflection:
-                            editableReflections[r.id] !== undefined
-                              ? editableReflections[r.id]
-                              : r.reflection,
-                        }))
-                      : currentReflections
-                  }
-                  edit={editMode}
-                  onReflectionChange={(reflectionId, newText) =>
-                    setEditableReflections((prev) => ({
-                      ...prev,
-                      [reflectionId]: newText,
-                    }))
-                  }
-                />
+                {isLoading ? (
+                  <div className="flex justify-center py-8">
+                    <span className="loading loading-spinner text-primary"></span>
+                  </div>
+                ) : (
+                  <ReflectionContainer
+                    reflections={
+                      editMode
+                        ? currentReflections.map((r) => ({
+                            ...r,
+                            reflection:
+                              editableReflections[r.id] !== undefined
+                                ? editableReflections[r.id]
+                                : r.reflection,
+                          }))
+                        : currentReflections
+                    }
+                    edit={editMode}
+                    onReflectionChange={(reflectionId, newText) =>
+                      setEditableReflections((prev) => ({
+                        ...prev,
+                        [reflectionId]: newText,
+                      }))
+                    }
+                  />
+                )}
 
                 {/* Action Buttons */}
                 <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <div className="flex gap-4">
+                  <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4">
                     <button
-                      className="btn bg-text-purplePrimary hover:bg-purple-600 text-white border-none flex-1"
+                      className="btn bg-text-purplePrimary hover:bg-purple-600 text-white border-none sm:flex-1"
                       onClick={markedAsAnswered}
                     >
                       <Icon icon="heart" className="w-4 h-4" />
                       Mark as Answered
                     </button>
                     <button
-                      className="btn btn-outline border-gray-300 text-text-grayPrimary hover:bg-gray-50 flex-1"
+                      className="btn btn-outline border-gray-300 text-text-grayPrimary hover:bg-gray-50 sm:flex-1"
                       onClick={handleClick}
                     >
                       <Icon icon="bible" className="w-4 h-4" />
@@ -289,7 +315,8 @@ function ViewPrayerDrawer({
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

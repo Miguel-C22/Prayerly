@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import CustomValidator from "../custom-validator/CustomValidator";
 import prayerSubmission from "@/utils/prayerSubmission";
+import LoadingOverlay from "../loading/LoadingOverlay";
 
 interface PrayerFormProps {
   onPrayerSubmitted?: (prayerData: any, response: any) => void;
@@ -13,6 +14,7 @@ function PrayerForm({ onPrayerSubmitted }: PrayerFormProps) {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [recurrenceType, setRecurrenceType] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({
     title: false,
     category: false,
@@ -33,6 +35,7 @@ function PrayerForm({ onPrayerSubmitted }: PrayerFormProps) {
     e.preventDefault();
     const isValid = validateForm();
     if (isValid) {
+      setIsSubmitting(true);
       try {
         const prayerData = { title, description, category, recurrenceType };
         const response = await prayerSubmission(prayerData);
@@ -54,13 +57,17 @@ function PrayerForm({ onPrayerSubmitted }: PrayerFormProps) {
       } catch (error) {
         console.error("Failed to submit prayer:", error);
         // You could show an error toast here
+      } finally {
+        setIsSubmitting(false);
       }
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
-      {/* Title Input */}
+    <>
+      <LoadingOverlay isLoading={isSubmitting} message="Adding prayer..." />
+      <form onSubmit={handleSubmit} className="space-y-8">
+        {/* Title Input */}
       <fieldset>
         <legend className="text-sm font-medium mb-2">Prayer Title *</legend>
         <input
@@ -138,7 +145,8 @@ function PrayerForm({ onPrayerSubmitted }: PrayerFormProps) {
           Cancel
         </label>
       </div>
-    </form>
+      </form>
+    </>
   );
 }
 

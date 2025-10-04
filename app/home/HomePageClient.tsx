@@ -9,6 +9,7 @@ import { Prayer } from "@/types/prayer";
 import {
   getPrayers,
   getSinglePrayerClient,
+  deletePrayer,
 } from "@/utils/client/prayersClient";
 import ViewPrayerDrawer from "@/components/view-prayer-drawer/ViewPrayerDrawer";
 
@@ -81,6 +82,16 @@ export default function HomePageClient({
     setSelectedPrayerId("");
   };
 
+  const handleDeletePrayer = async (prayerId: string) => {
+    const success = await deletePrayer(prayerId);
+    if (success) {
+      // Optimistically remove from UI
+      setPrayers((prev) => prev.filter((p) => p.id !== prayerId));
+    } else {
+      alert("Failed to delete prayer. Please try again.");
+    }
+  };
+
   useEffect(() => {
     if (selectedPrayerId) {
       handleViewDetails();
@@ -106,6 +117,7 @@ export default function HomePageClient({
               date={new Date(prayer.created_at).toLocaleDateString()}
               category={prayer.category || undefined}
               setSelectedPrayerId={setSelectedPrayerId}
+              onDelete={handleDeletePrayer}
             />
           ))}
         </div>
