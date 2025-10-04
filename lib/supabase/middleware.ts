@@ -47,6 +47,11 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
+  // Allow cron jobs to bypass authentication
+  if (request.nextUrl.pathname.startsWith("/api/cron/")) {
+    return supabaseResponse;
+  }
+
   // Public routes that don't require authentication
   const publicRoutes = [
     "/auth/login",

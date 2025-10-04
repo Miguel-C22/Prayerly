@@ -100,23 +100,21 @@ async function sendReminderEmail(reminder: any) {
 async function updateNextRunTime(reminder: any, supabase: any) {
   const nextRun = calculateNextRun(reminder);
 
-  // Check if we've reached the end
-  const shouldDeactivate =
-    !nextRun ||
-    (reminder.end_date && nextRun > new Date(reminder.end_date)) ||
-    (reminder.occurrence_count && reminder.occurrence_count <= 1);
+  // Prepare update object
+  const updateData: any = {
+    last_run_at: new Date().toISOString(),
+    next_run_at: nextRun?.toISOString() || null,
+    updated_at: new Date().toISOString(),
+  };
+
+  // Only update occurrence_count if it exists (decrement)
+  if (reminder.occurrence_count) {
+    updateData.occurrence_count = reminder.occurrence_count - 1;
+  }
 
   await supabase
     .from("reminders")
-    .update({
-      last_run_at: new Date().toISOString(),
-      next_run_at: nextRun?.toISOString() || null,
-      is_active: !shouldDeactivate,
-      occurrence_count: reminder.occurrence_count
-        ? reminder.occurrence_count - 1
-        : null,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq("id", reminder.id);
 }
 
