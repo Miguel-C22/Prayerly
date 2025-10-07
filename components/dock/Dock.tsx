@@ -61,7 +61,7 @@ function Dock({ setHeaderContent }: DockProps) {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-0 bg-white border-t border-gray-200">
+    <div className="fixed bottom-0 left-0 right-0 z-0 bg-backgrounds-white border-t border-border-gray">
       <div className="flex justify-around items-center py-2 px-4 max-w-md mx-auto">
         {dockTabs.map((tab) => (
           <button

@@ -25,7 +25,7 @@ function ProfileCard({
   };
 
   return (
-    <div className="card bg-white shadow-lg border border-gray-100 rounded-3xl p-6 sm:p-8 w-full max-w-4xl mx-auto">
+    <div className="card bg-backgrounds-white shadow-lg border border-border-gray rounded-3xl p-6 sm:p-8 w-full max-w-4xl mx-auto">
       {/* Profile Header */}
       <div className="flex items-center gap-4 sm:gap-6 mb-8 sm:mb-12">
         {/* Avatar */}

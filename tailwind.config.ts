@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 export default {
-  darkMode: ["class"],
+  darkMode: ["selector", '[data-theme="dark"]'],
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -13,23 +13,27 @@ export default {
     extend: {
       colors: {
         backgrounds: {
-          lavender: "#f3e8ff", // bg-lavender (light purple shade)
-          grayLight: "#f3f4f6", // bg-gray-light or hover:bg-gray-light
-          light: "#f5f5f5 ", // bg-very-light
-          darkBlue: "#1a2c53", // bg-dark-blue
-          veryLight: "#fafafa", // bg-background
+          lavender: "var(--bg-lavender)",
+          grayLight: "var(--bg-gray-light)",
+          light: "var(--bg-light)",
+          darkBlue: "#1a2c53",
+          veryLight: "var(--bg-very-light)",
+          white: "var(--bg-white)",
         },
         text: {
-          purplePrimary: "#422ad5", // text-purple-primary
-          grayPrimary: "#111827", // text-gray-primary
-          graySecondary: "#838995", // text-gray-secondary
+          purplePrimary: "var(--text-purple)",
+          grayPrimary: "var(--text-primary)",
+          graySecondary: "var(--text-secondary)",
+        },
+        border: {
+          gray: "var(--border-gray)",
         },
       },
     },
   },
   plugins: [require("tailwindcss-animate"), require("daisyui")],
   daisyui: {
-    themes: ["light"],
+    themes: ["light", "dark"],
     darkTheme: "light",
     base: true,
     styled: true,

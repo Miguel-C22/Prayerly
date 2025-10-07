@@ -22,7 +22,7 @@ function ComboCard({
   setSelectedPrayerId,
 }: ComboCardProps) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+    <div className="bg-backgrounds-white border border-border-gray rounded-lg p-4 shadow-sm">
       {/* Header with title and category */}
       <div className="flex justify-between items-start mb-2 gap-2">
         <h3 className="text-lg font-semibold text-text-grayPrimary">{title}</h3>
@@ -43,7 +43,7 @@ function ComboCard({
         </div>
         <label
           htmlFor="view-prayer"
-          className="border border-gray-300 bg-backgrounds-grayLight rounded-lg px-4 py-2 text-text-grayPrimary text-sm font-medium hover:bg-gray-50"
+          className="border border-border-gray bg-backgrounds-grayLight rounded-lg px-4 py-2 text-text-grayPrimary text-sm font-medium hover:bg-backgrounds-light transition-colors cursor-pointer"
           onClick={() => setSelectedPrayerId && setSelectedPrayerId(id)}
         >
           View Prayer Details

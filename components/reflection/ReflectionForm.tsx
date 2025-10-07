@@ -40,7 +40,7 @@ function ReflectionForm({ prayerId, onAddReflection }: ReflectionFormProps) {
   return (
     <>
       <LoadingOverlay isLoading={isSubmitting} message="Saving reflection..." />
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
+      <div className="bg-backgrounds-white border border-border-gray rounded-lg p-6">
         {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <Icon icon="bible" className="w-5 h-5 text-text-purplePrimary" />

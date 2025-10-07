@@ -19,10 +19,10 @@ function PrayerRequestDrawer({ onPrayerSubmitted }: PrayerRequestDrawerProps) {
         <div className="text-base-content min-h-full w-full flex flex-col bg-backgrounds-light">
           {/* Header with back button */}
           <div className="flex-none p-6 pb-0">
-            <div className="flex justify-between items-center mb-4 text-black">
+            <div className="flex justify-between items-center mb-4">
               <label
                 htmlFor="add-prayer"
-                className="btn btn-ghost text-black flex items-center gap-2 hover:bg-transparent hover:shadow-none hover:scale-100 hover:border-transparent focus:border-transparent focus:outline-none"
+                className="btn btn-ghost text-text-grayPrimary flex items-center gap-2 hover:bg-transparent hover:shadow-none hover:scale-100 hover:border-transparent focus:border-transparent focus:outline-none"
               >
                 <Icon icon="backArrow" className="w-5 h-5" />
                 Back
@@ -32,9 +32,9 @@ function PrayerRequestDrawer({ onPrayerSubmitted }: PrayerRequestDrawerProps) {
 
           {/* Centered form content */}
           <div className="flex-1 flex items-center justify-center p-6 pt-2">
-            <div className="w-full max-w-3xl bg-white border border-gray-200 rounded-xl p-8">
+            <div className="w-full max-w-3xl bg-backgrounds-white border border-border-gray rounded-xl p-8">
               <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2 flex gap-4 items-center">
+                <h2 className="text-2xl font-bold text-text-grayPrimary mb-2 flex gap-4 items-center">
                   <Icon
                     icon="heart"
                     className="w-6 h-6 text-text-purplePrimary"

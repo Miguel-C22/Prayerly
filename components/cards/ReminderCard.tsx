@@ -65,7 +65,7 @@ function ReminderCard({
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+    <div className="bg-backgrounds-white border border-border-gray rounded-lg p-4 shadow-sm">
       <div className="flex items-center justify-between">
         {/* Left side content */}
         <div className="flex-1">
@@ -97,7 +97,7 @@ function ReminderCard({
                 handleToggle();
               }}
             />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+            <div className="w-11 h-6 bg-backgrounds-grayLight peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-backgrounds-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
           </label>
         </div>
       </div>

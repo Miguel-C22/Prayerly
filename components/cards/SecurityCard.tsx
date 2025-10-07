@@ -40,7 +40,7 @@ function SecurityCard({ onChangePassword }: SecurityCardProps) {
   };
 
   return (
-    <div className="card bg-white shadow-lg border border-gray-100 rounded-3xl p-6 sm:p-8 w-full">
+    <div className="card bg-backgrounds-white shadow-lg border border-border-gray rounded-3xl p-6 sm:p-8 w-full">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Icon icon="close" className="w-6 h-6 text-text-grayPrimary" />
@@ -58,7 +58,7 @@ function SecurityCard({ onChangePassword }: SecurityCardProps) {
             placeholder="Enter current password"
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
-            className="w-full input h-12 border-gray-200 text-text-grayPrimary placeholder:text-text-graySecondary focus:border-text-purplePrimary focus:outline-text-purplePrimary text-sm rounded-xl transition-all duration-200"
+            className="w-full input h-12 border-border-gray text-text-grayPrimary placeholder:text-text-graySecondary focus:border-text-purplePrimary focus:outline-text-purplePrimary text-sm rounded-xl transition-all duration-200"
             required
           />
         </fieldset>
@@ -73,7 +73,7 @@ function SecurityCard({ onChangePassword }: SecurityCardProps) {
             placeholder="Enter new password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            className="w-full input h-12 border-gray-200 text-text-grayPrimary placeholder:text-text-graySecondary focus:border-text-purplePrimary focus:outline-text-purplePrimary text-sm rounded-xl transition-all duration-200"
+            className="w-full input h-12 border-border-gray text-text-grayPrimary placeholder:text-text-graySecondary focus:border-text-purplePrimary focus:outline-text-purplePrimary text-sm rounded-xl transition-all duration-200"
             required
           />
         </fieldset>
@@ -88,7 +88,7 @@ function SecurityCard({ onChangePassword }: SecurityCardProps) {
             placeholder="Confirm new password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full input h-12 border-gray-200 text-text-grayPrimary placeholder:text-text-graySecondary focus:border-text-purplePrimary focus:outline-text-purplePrimary text-sm rounded-xl transition-all duration-200"
+            className="w-full input h-12 border-border-gray text-text-grayPrimary placeholder:text-text-graySecondary focus:border-text-purplePrimary focus:outline-text-purplePrimary text-sm rounded-xl transition-all duration-200"
             required
           />
         </fieldset>

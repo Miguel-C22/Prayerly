@@ -42,13 +42,13 @@ function PrayerCard({
     setShowDeleteModal(false);
   };
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm relative">
+    <div className="bg-backgrounds-white border border-border-gray rounded-lg p-4 shadow-sm relative">
       {/* Delete button - only show when not in edit mode */}
       {!edit && onDelete && (
         <>
           <button
             onClick={handleDeleteClick}
-            className="absolute top-3 right-3 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+            className="absolute top-3 right-3 p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
             aria-label="Delete prayer"
           >
             <Icon icon="trash" className="w-5 h-5" />
@@ -101,7 +101,7 @@ function PrayerCard({
         {!hideBtn ? (
           <label
             htmlFor="view-prayer"
-            className="border border-gray-300 bg-backgrounds-grayLight rounded-lg px-4 py-2 text-text-grayPrimary text-sm font-medium hover:bg-gray-50"
+            className="border border-border-gray bg-backgrounds-grayLight rounded-lg px-4 py-2 text-text-grayPrimary text-sm font-medium hover:bg-backgrounds-light transition-colors cursor-pointer"
             onClick={() => setSelectedPrayerId && setSelectedPrayerId(id)}
           >
             View Details

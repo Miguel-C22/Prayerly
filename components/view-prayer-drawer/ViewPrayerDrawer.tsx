@@ -202,10 +202,10 @@ function ViewPrayerDrawer({
         <div className="text-base-content min-h-full w-full flex flex-col bg-backgrounds-light">
           {/* Header with back button */}
           <div className="flex place-content-between p-6 pb-0">
-            <div className="flex justify-between items-center mb-4 text-black">
+            <div className="flex justify-between items-center mb-4">
               <label
                 htmlFor="view-prayer"
-                className="btn btn-ghost text-black flex items-center gap-2 hover:bg-transparent hover:shadow-none hover:scale-100 hover:border-transparent focus:border-transparent focus:outline-none"
+                className="btn btn-ghost text-text-grayPrimary flex items-center gap-2 hover:bg-transparent hover:shadow-none hover:scale-100 hover:border-transparent focus:border-transparent focus:outline-none"
                 onClick={closeDrawer}
               >
                 <Icon icon="backArrow" className="w-5 h-5" />
@@ -292,7 +292,7 @@ function ViewPrayerDrawer({
                 )}
 
                 {/* Action Buttons */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <div className="bg-backgrounds-white border border-border-gray rounded-lg p-6">
                   <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4">
                     <button
                       className="btn bg-text-purplePrimary hover:bg-purple-600 text-white border-none sm:flex-1"
@@ -302,7 +302,7 @@ function ViewPrayerDrawer({
                       Mark as Answered
                     </button>
                     <button
-                      className="btn btn-outline border-gray-300 text-text-grayPrimary hover:bg-gray-50 sm:flex-1"
+                      className="btn btn-outline border-border-gray text-text-grayPrimary hover:bg-backgrounds-grayLight sm:flex-1"
                       onClick={handleClick}
                     >
                       <Icon icon="bible" className="w-4 h-4" />

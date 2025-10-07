@@ -10,7 +10,7 @@ interface StatCardProps {
 
 function StatCard({ amount, icon, description }: StatCardProps) {
   return (
-    <div className="card bg-backgrounds-veryLight shadow-sm border border-gray-100 rounded-2xl p-4 sm:p-6 flex flex-col items-center justify-center text-center min-h-[160px] sm:min-h-[180px] w-full max-w-xs mx-auto">
+    <div className="card bg-backgrounds-veryLight shadow-sm border border-border-gray rounded-2xl p-4 sm:p-6 flex flex-col items-center justify-center text-center min-h-[160px] sm:min-h-[180px] w-full max-w-xs mx-auto">
       {/* Icon */}
       <div className="mb-3 sm:mb-4">
         <Icon

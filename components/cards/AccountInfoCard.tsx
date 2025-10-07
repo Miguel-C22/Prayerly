@@ -25,7 +25,7 @@ function AccountInfoCard({ currentName, currentEmail, onUpdateProfile }: Account
   };
 
   return (
-    <div className="card bg-white shadow-lg border border-gray-100 rounded-3xl p-6 sm:p-8 w-full">
+    <div className="card bg-backgrounds-white shadow-lg border border-border-gray rounded-3xl p-6 sm:p-8 w-full">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Icon icon="profile" className="w-6 h-6 text-text-grayPrimary" />
@@ -42,7 +42,7 @@ function AccountInfoCard({ currentName, currentEmail, onUpdateProfile }: Account
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full input h-12 border-gray-200 text-text-grayPrimary placeholder:text-text-graySecondary focus:border-text-purplePrimary focus:outline-text-purplePrimary text-sm rounded-xl transition-all duration-200"
+            className="w-full input h-12 border-border-gray text-text-grayPrimary placeholder:text-text-graySecondary focus:border-text-purplePrimary focus:outline-text-purplePrimary text-sm rounded-xl transition-all duration-200"
             required
           />
         </fieldset>
@@ -56,7 +56,7 @@ function AccountInfoCard({ currentName, currentEmail, onUpdateProfile }: Account
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full input h-12 border-gray-200 text-text-grayPrimary placeholder:text-text-graySecondary focus:border-text-purplePrimary focus:outline-text-purplePrimary text-sm rounded-xl transition-all duration-200"
+            className="w-full input h-12 border-border-gray text-text-grayPrimary placeholder:text-text-graySecondary focus:border-text-purplePrimary focus:outline-text-purplePrimary text-sm rounded-xl transition-all duration-200"
             required
           />
         </fieldset>

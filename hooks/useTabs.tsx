@@ -22,7 +22,7 @@ function useTabs(tabs: UseTabsProps[]) {
             key={tab.tab}
             className={`w-full py-1 transition-all text-center cursor-pointer ${
               selectedTab === tab.tab
-                ? "bg-white rounded-full text-text-grayPrimary shadow-sm "
+                ? "bg-backgrounds-white rounded-full text-text-grayPrimary shadow-sm "
                 : "text-text-graySecondary hover:text-text-grayPrimary"
             }`}
             onClick={() => setSelectedTab(tab.tab)}

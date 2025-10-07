@@ -62,7 +62,7 @@ function DataPrivacyCard({
   return (
     <div className="space-y-6">
       {/* Data & Privacy Card */}
-      <div className="card bg-white shadow-lg border border-gray-100 rounded-3xl p-6 sm:p-8 w-full">
+      <div className="card bg-backgrounds-white shadow-lg border border-border-gray rounded-3xl p-6 sm:p-8 w-full">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <Icon icon="backArrow" className="w-6 h-6 text-text-grayPrimary rotate-90" />
@@ -74,7 +74,7 @@ function DataPrivacyCard({
           <button
             onClick={handleExportJournal}
             disabled={isExporting}
-            className="btn btn-outline w-full h-14 border-gray-200 text-text-grayPrimary hover:bg-backgrounds-grayLight hover:border-gray-300 rounded-xl text-sm font-medium transition-all duration-200"
+            className="btn btn-outline w-full h-14 border-border-gray text-text-grayPrimary hover:bg-backgrounds-grayLight hover:border-border-gray rounded-xl text-sm font-medium transition-all duration-200"
           >
             {isExporting ? "Exporting..." : "Export Prayer Journal (PDF)"}
           </button>
@@ -83,7 +83,7 @@ function DataPrivacyCard({
           <button
             onClick={handleDownloadData}
             disabled={isDownloading}
-            className="btn btn-outline w-full h-14 border-gray-200 text-text-grayPrimary hover:bg-backgrounds-grayLight hover:border-gray-300 rounded-xl text-sm font-medium transition-all duration-200"
+            className="btn btn-outline w-full h-14 border-border-gray text-text-grayPrimary hover:bg-backgrounds-grayLight hover:border-border-gray rounded-xl text-sm font-medium transition-all duration-200"
           >
             {isDownloading ? "Downloading..." : "Download All Data"}
           </button>
@@ -100,11 +100,11 @@ function DataPrivacyCard({
       </div>
 
       {/* Sign Out Card */}
-      <div className="card bg-white shadow-lg border border-gray-100 rounded-3xl p-6 sm:p-8 w-full">
+      <div className="card bg-backgrounds-white shadow-lg border border-border-gray rounded-3xl p-6 sm:p-8 w-full">
         <button
           onClick={handleSignOut}
           disabled={isSigningOut}
-          className="btn btn-outline w-full h-14 border-gray-200 text-text-grayPrimary hover:bg-backgrounds-grayLight hover:border-gray-300 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-3"
+          className="btn btn-outline w-full h-14 border-border-gray text-text-grayPrimary hover:bg-backgrounds-grayLight hover:border-border-gray rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-3"
         >
           <Icon icon="backArrow" className="w-5 h-5" />
           {isSigningOut ? "Signing Out..." : "Sign Out"}

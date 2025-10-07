@@ -10,7 +10,7 @@ interface ReflectionCardProps {
 
 function ReflectionCard({ date, reflection, edit, onReflectionChange }: ReflectionCardProps) {
   return (
-    <div className="card bg-base-100 border border-gray-200 shadow-sm">
+    <div className="card bg-backgrounds-white border border-border-gray shadow-sm">
       <div className="card-body p-4">
         {/* Date with calendar icon */}
         <div className="flex items-center gap-2 mb-3">
