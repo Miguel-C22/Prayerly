@@ -5,9 +5,11 @@ import { PrayerReminderEmail } from "@/components/emails/prayer-reminder-templat
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function GET(request: Request) {
-  // Verify cron secret for security
+  // Verify request is from Vercel Cron or has valid secret (for local testing)
   const authHeader = request.headers.get("Authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const isVercelCron = request.headers.get("user-agent")?.includes("vercel-cron");
+
+  if (!isVercelCron && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
