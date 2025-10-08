@@ -41,23 +41,43 @@ export async function GET(request: Request) {
       return Response.json({ sent: 0, message: "No reminders due" });
     }
 
+    // Group reminders by user email
+    const remindersByEmail = new Map<string, any[]>();
+
+    for (const reminder of dueReminders) {
+      const email = reminder.destination?.email;
+      if (!email) continue;
+
+      if (!remindersByEmail.has(email)) {
+        remindersByEmail.set(email, []);
+      }
+      remindersByEmail.get(email)!.push(reminder);
+    }
+
     const results = [];
 
-    // Send each reminder
-    for (const reminder of dueReminders) {
+    // Send one email per user with all their due prayers
+    for (const [email, reminders] of remindersByEmail.entries()) {
       try {
-        await sendReminderEmail(reminder);
-        await updateNextRunTime(reminder, supabase);
-        results.push({ id: reminder.id, status: "sent" });
+        await sendBatchReminderEmail(email, reminders);
+
+        // Update all reminders in this batch
+        for (const reminder of reminders) {
+          await updateNextRunTime(reminder, supabase);
+          results.push({ id: reminder.id, status: "sent" });
+        }
       } catch (error) {
-        console.error(`Failed to send reminder ${reminder.id}:`, error);
-        results.push({ id: reminder.id, status: "failed", error: String(error) });
+        console.error(`Failed to send batch of ${reminders.length} reminders:`, error);
+        for (const reminder of reminders) {
+          results.push({ id: reminder.id, status: "failed", error: String(error) });
+        }
       }
     }
 
     return Response.json({
       sent: results.filter((r) => r.status === "sent").length,
       failed: results.filter((r) => r.status === "failed").length,
+      emailsSent: remindersByEmail.size,
       results,
     });
   } catch (error) {
@@ -66,36 +86,47 @@ export async function GET(request: Request) {
   }
 }
 
-async function sendReminderEmail(reminder: any) {
-  const email = reminder.destination?.email;
-
+async function sendBatchReminderEmail(email: string, reminders: any[]) {
   if (!email) {
-    throw new Error("No email address in reminder destination");
+    throw new Error("No email address provided");
   }
+
+  // Extract prayer data from reminders
+  const prayers = reminders.map((reminder) => ({
+    title: reminder.prayers?.title || "Your Prayer",
+    description: reminder.prayers?.description || "",
+    category: reminder.prayers?.category || "",
+  }));
+
+  // Create subject line
+  const subject =
+    prayers.length === 1
+      ? `Prayer Reminder: ${prayers[0].title}`
+      : `${prayers.length} Prayer Reminders for Today`;
 
   const { data, error } = await resend.emails.send({
     from: "Prayerly <reminders@resend.dev>",
     to: email,
-    subject: `Prayer Reminder: ${reminder.prayers?.title || "Your Prayer"}`,
-    react: PrayerReminderEmail({
-      prayerTitle: reminder.prayers?.title || "Your Prayer",
-      prayerDescription: reminder.prayers?.description || "",
-      category: reminder.prayers?.category || "",
-    }),
+    subject,
+    react: PrayerReminderEmail({ prayers }),
   });
 
   if (error) {
     throw new Error(`Resend error: ${error.message}`);
   }
 
-  // Log the send to reminder_logs table
+  // Log the send to reminder_logs table for each reminder
   const supabase = await createClient();
-  await supabase.from("reminder_logs").insert({
-    reminder_id: reminder.id,
-    sent_at: new Date().toISOString(),
-    status: "sent",
-    metadata: { resend_id: data?.id },
-  });
+  const logPromises = reminders.map((reminder) =>
+    supabase.from("reminder_logs").insert({
+      reminder_id: reminder.id,
+      sent_at: new Date().toISOString(),
+      status: "sent",
+      metadata: { resend_id: data?.id, batch_size: reminders.length },
+    })
+  );
+
+  await Promise.all(logPromises);
 }
 
 async function updateNextRunTime(reminder: any, supabase: any) {
