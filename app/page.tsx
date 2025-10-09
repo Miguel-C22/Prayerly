@@ -1,10 +1,18 @@
-export default function Home() {
-  return (
-    <div className="p-6">
-      <p className="text-gray-600">
-        This will be out website page where users can go to see what the app is
-        about and create an account and or log in
-      </p>
-    </div>
-  );
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+
+export default async function Home() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    // User is logged in, redirect to home dashboard
+    redirect("/home");
+  } else {
+    // User is not logged in, redirect to login page
+    redirect("/auth/login");
+  }
 }

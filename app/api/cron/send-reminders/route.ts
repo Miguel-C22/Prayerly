@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { Resend } from "resend";
 import { PrayerReminderEmail } from "@/components/emails/prayer-reminder-template";
 
@@ -12,7 +12,8 @@ export async function GET(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClient();
+  // Use admin client to bypass RLS - cron job needs access to all users' reminders
+  const supabase = createAdminClient();
   const now = new Date();
 
   try {
@@ -116,9 +117,10 @@ async function sendBatchReminderEmail(email: string, reminders: any[]) {
   }
 
   // Log the send to reminder_logs table for each reminder
-  const supabase = await createClient();
+  // Use admin client to bypass RLS when logging for other users
+  const logSupabase = createAdminClient();
   const logPromises = reminders.map((reminder) =>
-    supabase.from("reminder_logs").insert({
+    logSupabase.from("reminder_logs").insert({
       reminder_id: reminder.id,
       sent_at: new Date().toISOString(),
       status: "sent",
