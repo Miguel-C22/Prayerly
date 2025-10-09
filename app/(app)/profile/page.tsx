@@ -11,11 +11,7 @@ async function page() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    return <div>Please log in to view your profile.</div>;
-  }
-
-  // Fetch user data
+  // Layout already checks auth, but we need user data for the profile
   const prayers = await getPrayers();
   const reflections = await getReflections();
 

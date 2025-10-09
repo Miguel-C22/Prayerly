@@ -1,5 +1,3 @@
-"use server";
-
 import AppLayout from "@/components/layout/AppLayout";
 import HomePageClient from "./HomePageClient";
 import { getPrayers } from "@/utils/server/prayersServer";
