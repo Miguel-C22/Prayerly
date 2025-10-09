@@ -11,15 +11,16 @@ async function page() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Layout already checks auth, but we need user data for the profile
+  // Layout already checks auth, so user is guaranteed to exist
+  // Using non-null assertion since layout redirects unauthenticated users
   const prayers = await getPrayers();
   const reflections = await getReflections();
 
   return (
     <AppLayout>
       <ProfilePageClient
-        userName={user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'}
-        email={user.email || ''}
+        userName={user!.user_metadata?.full_name || user!.email?.split('@')[0] || 'User'}
+        email={user!.email || ''}
         prayers={prayers}
         reflections={reflections}
       />

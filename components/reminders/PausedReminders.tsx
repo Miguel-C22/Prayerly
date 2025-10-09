@@ -1,6 +1,6 @@
 import React from "react";
 import ReminderCard from "../cards/ReminderCard";
-import { RemindersPageClientProps } from "@/app/reminders/RemindersPageClient";
+import { RemindersPageClientProps } from "@/app/(app)/reminders/RemindersPageClient";
 
 interface PausedRemindersProps extends RemindersPageClientProps {
   setReminderState: React.Dispatch<
