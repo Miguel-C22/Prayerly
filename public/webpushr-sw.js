@@ -1,4 +1,3 @@
 // Webpushr Service Worker
-// This file is required by Webpushr to enable push notifications
-
-importScripts('https://cdn.webpushr.com/sw.min.js');
+// This file must exist at /webpushr-sw.js for Webpushr to function
+// The Webpushr SDK will inject the necessary code at runtime
