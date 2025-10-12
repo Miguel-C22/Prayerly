@@ -16,54 +16,22 @@ export default function PushNotificationSettings() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if we're on localhost - Webpushr only works on production domain
-    const isLocalhost = typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" ||
-       window.location.hostname === "127.0.0.1" ||
-       window.location.hostname.includes("localhost"));
-
-    if (isLocalhost) {
-      setIsLoading(false);
-      setError(
-        "Push notifications are only available on the production site (https://prayerly-livid.vercel.app). They cannot be tested on localhost."
-      );
-      return;
-    }
-
     // Check if browser supports notifications
     if ("Notification" in window && "serviceWorker" in navigator) {
       setIsSupported(true);
       let attempts = 0;
       const maxAttempts = 50; // 5 seconds
-      let isInitialized = false;
 
-      // Wait for Webpushr SDK to fully initialize
+      // Wait for Webpushr SDK stub to load
       const checkWebpushr = setInterval(() => {
         attempts++;
 
-        if (typeof window.webpushr !== "undefined" && !isInitialized) {
-          // SDK stub exists, now check if it's fully initialized
-          try {
-            window.webpushr("is_setup_done", (isSetup: boolean) => {
-              if (isSetup && !isInitialized) {
-                isInitialized = true;
-                clearInterval(checkWebpushr);
-                setIsLoading(false);
-                checkSubscriptionStatus();
-              }
-            });
-          } catch (err) {
-            // If there's an error, stop trying and show error message
-            console.error("Webpushr initialization error:", err);
-            isInitialized = true;
-            clearInterval(checkWebpushr);
-            setIsLoading(false);
-            setError("Failed to initialize push notifications. Please refresh the page.");
-          }
-        }
-
-        if (attempts >= maxAttempts && !isInitialized) {
-          isInitialized = true;
+        if (typeof window.webpushr !== "undefined") {
+          // SDK stub exists, that's all we need to show the UI
+          clearInterval(checkWebpushr);
+          setIsLoading(false);
+        } else if (attempts >= maxAttempts) {
+          // Timeout - SDK failed to load
           clearInterval(checkWebpushr);
           setIsLoading(false);
           setError(
@@ -77,28 +45,6 @@ export default function PushNotificationSettings() {
       setIsLoading(false);
     }
   }, []);
-
-  const checkSubscriptionStatus = () => {
-    if (typeof window.webpushr === "undefined") {
-      return;
-    }
-
-    try {
-      // Check if SDK is fully initialized
-      window.webpushr("is_setup_done", (isSetup: boolean) => {
-        if (isSetup && typeof window.webpushr !== "undefined") {
-          window.webpushr("fetch_id", (sid: string) => {
-            if (sid) {
-              setIsSubscribed(true);
-              saveSubscriberId(sid);
-            }
-          });
-        }
-      });
-    } catch (err) {
-      console.error("Error checking subscription status:", err);
-    }
-  };
 
   const handleSubscribe = async () => {
     if (typeof window.webpushr === "undefined") {
