@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   const now = new Date();
 
   try {
-    // Get all reminders due now
+    // Get all reminders due now (regardless of channel)
     const { data: dueReminders, error } = await supabase
       .from("reminders")
       .select(`
@@ -30,8 +30,7 @@ export async function GET(request: Request) {
         )
       `)
       .lte("next_run_at", now.toISOString())
-      .eq("is_active", true)
-      .eq("channel", "email");
+      .eq("is_active", true);
 
     if (error) {
       console.error("Error fetching reminders:", error);
@@ -42,43 +41,51 @@ export async function GET(request: Request) {
       return Response.json({ sent: 0, message: "No reminders due" });
     }
 
-    // Group reminders by user email
-    const remindersByEmail = new Map<string, any[]>();
-
-    for (const reminder of dueReminders) {
-      const email = reminder.destination?.email;
-      if (!email) continue;
-
-      if (!remindersByEmail.has(email)) {
-        remindersByEmail.set(email, []);
-      }
-      remindersByEmail.get(email)!.push(reminder);
-    }
-
     const results = [];
 
-    // Send one email per user with all their due prayers
-    for (const [email, reminders] of remindersByEmail.entries()) {
-      try {
-        await sendBatchReminderEmail(email, reminders);
+    // Process each reminder
+    for (const reminder of dueReminders) {
+      const channels = Array.isArray(reminder.channel)
+        ? reminder.channel
+        : [reminder.channel]; // Handle old data format
 
-        // Update all reminders in this batch
-        for (const reminder of reminders) {
-          await updateNextRunTime(reminder, supabase);
-          results.push({ id: reminder.id, status: "sent" });
-        }
-      } catch (error) {
-        console.error(`Failed to send batch of ${reminders.length} reminders:`, error);
-        for (const reminder of reminders) {
-          results.push({ id: reminder.id, status: "failed", error: String(error) });
+      // Send to each channel
+      for (const channel of channels) {
+        try {
+          if (channel === 'email') {
+            await sendEmailReminder(reminder);
+            results.push({
+              id: reminder.id,
+              channel: 'email',
+              status: "sent"
+            });
+          } else if (channel === 'push') {
+            await sendPushReminder(reminder);
+            results.push({
+              id: reminder.id,
+              channel: 'push',
+              status: "sent"
+            });
+          }
+        } catch (error) {
+          console.error(`Failed to send ${channel} reminder:`, error);
+          results.push({
+            id: reminder.id,
+            channel,
+            status: "failed",
+            error: String(error)
+          });
         }
       }
+
+      // Update next run time (once per reminder, not per channel)
+      await updateNextRunTime(reminder, supabase);
     }
 
     return Response.json({
       sent: results.filter((r) => r.status === "sent").length,
       failed: results.filter((r) => r.status === "failed").length,
-      emailsSent: remindersByEmail.size,
+      total: dueReminders.length,
       results,
     });
   } catch (error) {
@@ -87,48 +94,82 @@ export async function GET(request: Request) {
   }
 }
 
-async function sendBatchReminderEmail(email: string, reminders: any[]) {
+// Send email reminder for a single prayer
+async function sendEmailReminder(reminder: any) {
+  const email = reminder.destination?.email;
   if (!email) {
-    throw new Error("No email address provided");
+    throw new Error("No email address in destination");
   }
 
-  // Extract prayer data from reminders
-  const prayers = reminders.map((reminder) => ({
+  const prayer = {
     title: reminder.prayers?.title || "Your Prayer",
     description: reminder.prayers?.description || "",
     category: reminder.prayers?.category || "",
-  }));
-
-  // Create subject line
-  const subject =
-    prayers.length === 1
-      ? `Prayer Reminder: ${prayers[0].title}`
-      : `${prayers.length} Prayer Reminders for Today`;
+  };
 
   const { data, error } = await resend.emails.send({
     from: "Prayerly <reminders@resend.dev>",
     to: email,
-    subject,
-    react: PrayerReminderEmail({ prayers }),
+    subject: `Prayer Reminder: ${prayer.title}`,
+    react: PrayerReminderEmail({ prayers: [prayer] }),
   });
 
   if (error) {
     throw new Error(`Resend error: ${error.message}`);
   }
 
-  // Log the send to reminder_logs table for each reminder
-  // Use admin client to bypass RLS when logging for other users
+  // Log to reminder_logs
   const logSupabase = createAdminClient();
-  const logPromises = reminders.map((reminder) =>
-    logSupabase.from("reminder_logs").insert({
-      reminder_id: reminder.id,
-      sent_at: new Date().toISOString(),
-      status: "sent",
-      metadata: { resend_id: data?.id, batch_size: reminders.length },
-    })
-  );
+  await logSupabase.from("reminder_logs").insert({
+    reminder_id: reminder.id,
+    sent_at: new Date().toISOString(),
+    channel: 'email',
+    status: "sent",
+    metadata: { resend_id: data?.id },
+  });
+}
 
-  await Promise.all(logPromises);
+// Send push notification via Webpushr REST API
+async function sendPushReminder(reminder: any) {
+  const subscriberId = reminder.destination?.push_subscriber_id;
+  if (!subscriberId) {
+    throw new Error("No push subscriber ID in destination");
+  }
+
+  const prayer = reminder.prayers || {};
+  const title = `Prayer Reminder: ${prayer.title || 'Your Prayer'}`;
+  const message = prayer.description || 'Time to pray for your request';
+
+  // Call Webpushr REST API
+  const response = await fetch('https://api.webpushr.com/v1/notification/send/sid', {
+    method: 'POST',
+    headers: {
+      'webpushrKey': process.env.NEXT_PUBLIC_WEBPUSHR_PUBLIC_KEY!,
+      'webpushrAuthToken': process.env.WEBPUSHR_AUTH_TOKEN!,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      title,
+      message,
+      target_url: `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/prayers`,
+      sid: subscriberId,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Webpushr API error: ${errorText}`);
+  }
+
+  // Log to reminder_logs
+  const logSupabase = createAdminClient();
+  await logSupabase.from("reminder_logs").insert({
+    reminder_id: reminder.id,
+    sent_at: new Date().toISOString(),
+    channel: 'push',
+    status: "sent",
+    metadata: { subscriber_id: subscriberId },
+  });
 }
 
 async function updateNextRunTime(reminder: any, supabase: any) {

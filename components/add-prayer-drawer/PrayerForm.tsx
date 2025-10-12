@@ -14,6 +14,7 @@ function PrayerForm({ onPrayerSubmitted }: PrayerFormProps) {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [recurrenceType, setRecurrenceType] = useState("");
+  const [selectedChannels, setSelectedChannels] = useState<string[]>(["email"]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({
     title: false,
@@ -37,7 +38,13 @@ function PrayerForm({ onPrayerSubmitted }: PrayerFormProps) {
     if (isValid) {
       setIsSubmitting(true);
       try {
-        const prayerData = { title, description, category, recurrenceType };
+        const prayerData = {
+          title,
+          description,
+          category,
+          recurrenceType,
+          channels: recurrenceType === 'none' ? [] : selectedChannels
+        };
         const response = await prayerSubmission(prayerData);
 
         // Call the callback to update the parent state optimistically
@@ -50,6 +57,7 @@ function PrayerForm({ onPrayerSubmitted }: PrayerFormProps) {
         setDescription("");
         setCategory("");
         setRecurrenceType("");
+        setSelectedChannels(["email"]);
 
         // Close the drawer
         const drawer = document.getElementById("my-drawer") as HTMLInputElement;
@@ -113,7 +121,7 @@ function PrayerForm({ onPrayerSubmitted }: PrayerFormProps) {
         />
       </div>
 
-      {/* Reminder */}
+      {/* Reminder Frequency */}
       <fieldset className="fieldset">
         <legend className="fieldset-legend">Prayer Reminders *</legend>
         <select
@@ -124,17 +132,57 @@ function PrayerForm({ onPrayerSubmitted }: PrayerFormProps) {
           onChange={(e) => setRecurrenceType(e.target.value)}
         >
           <option value="" disabled>
-            Prayer Reminder
+            Choose frequency
           </option>
           <option value="daily">Daily</option>
           <option value="weekly">Weekly</option>
           <option value="none">None</option>
         </select>
-        <span className="label">
-          We'll send gentle email reminders to pray for this prayer
-        </span>
         <CustomValidator error={errors.recurrenceType} hint="Select a option" />
       </fieldset>
+
+      {/* Notification Channels - Only show if reminder is not 'none' */}
+      {recurrenceType && recurrenceType !== 'none' && (
+        <fieldset className="fieldset">
+          <legend className="fieldset-legend">Notification Channels</legend>
+          <div className="space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="checkbox"
+                checked={selectedChannels.includes('email')}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedChannels([...selectedChannels, 'email']);
+                  } else {
+                    setSelectedChannels(selectedChannels.filter(c => c !== 'email'));
+                  }
+                }}
+              />
+              <span className="text-sm">Email reminders</span>
+            </label>
+
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="checkbox"
+                checked={selectedChannels.includes('push')}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedChannels([...selectedChannels, 'push']);
+                  } else {
+                    setSelectedChannels(selectedChannels.filter(c => c !== 'push'));
+                  }
+                }}
+              />
+              <span className="text-sm">Push notifications</span>
+            </label>
+          </div>
+          <span className="label text-xs text-text-graySecondary mt-2">
+            Choose how you want to receive reminders for this prayer
+          </span>
+        </fieldset>
+      )}
 
       {/* Submit Button */}
       <div className="flex gap-2">

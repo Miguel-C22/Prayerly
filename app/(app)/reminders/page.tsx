@@ -4,6 +4,7 @@ import RemindersPageClient from "./RemindersPageClient";
 import { getReminders } from "@/utils/server/remindersServer";
 import { getPrayers } from "@/utils/server/prayersServer";
 import Icon from "@/components/icon/Icon";
+import PushNotificationSettings from "@/components/notifications/PushNotificationSettings";
 
 async function page() {
   const reminders = await getReminders();
@@ -40,6 +41,22 @@ async function page() {
             for your requests. You can customize the timing and frequency for
             each prayer request.
           </p>
+        </div>
+
+        {/* Push Notifications Section */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-backgrounds-lavender rounded-lg flex items-center justify-center">
+              <Icon icon="bell" className="w-6 h-6 text-text-purplePrimary" />
+            </div>
+            <h2 className="text-xl font-semibold text-text-grayPrimary">
+              Push Notifications
+            </h2>
+          </div>
+          <p className="text-text-graySecondary text-sm leading-relaxed mb-4">
+            Get instant prayer reminders directly in your browser, even when the app is closed.
+          </p>
+          <PushNotificationSettings />
         </div>
 
         <RemindersPageClient reminders={combinedData} />
