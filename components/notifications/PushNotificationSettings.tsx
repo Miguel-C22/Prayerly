@@ -16,27 +16,58 @@ export default function PushNotificationSettings() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Check if we're on localhost - Webpushr only works on production domain
+    const isLocalhost = typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" ||
+       window.location.hostname === "127.0.0.1" ||
+       window.location.hostname.includes("localhost"));
+
+    if (isLocalhost) {
+      setIsLoading(false);
+      setError(
+        "Push notifications are only available on the production site (https://prayerly-livid.vercel.app). They cannot be tested on localhost."
+      );
+      return;
+    }
+
     // Check if browser supports notifications
     if ("Notification" in window && "serviceWorker" in navigator) {
       setIsSupported(true);
-
-      console.log("Waiting for Webpushr SDK to load...");
       let attempts = 0;
       const maxAttempts = 50; // 5 seconds
+      let isInitialized = false;
 
-      // Wait for Webpushr SDK to load
+      // Wait for Webpushr SDK to fully initialize
       const checkWebpushr = setInterval(() => {
         attempts++;
 
-        if (typeof window.webpushr !== "undefined") {
-          clearInterval(checkWebpushr);
-          setIsLoading(false);
-          checkSubscriptionStatus();
-        } else if (attempts >= maxAttempts) {
+        if (typeof window.webpushr !== "undefined" && !isInitialized) {
+          // SDK stub exists, now check if it's fully initialized
+          try {
+            window.webpushr("is_setup_done", (isSetup: boolean) => {
+              if (isSetup && !isInitialized) {
+                isInitialized = true;
+                clearInterval(checkWebpushr);
+                setIsLoading(false);
+                checkSubscriptionStatus();
+              }
+            });
+          } catch (err) {
+            // If there's an error, stop trying and show error message
+            console.error("Webpushr initialization error:", err);
+            isInitialized = true;
+            clearInterval(checkWebpushr);
+            setIsLoading(false);
+            setError("Failed to initialize push notifications. Please refresh the page.");
+          }
+        }
+
+        if (attempts >= maxAttempts && !isInitialized) {
+          isInitialized = true;
           clearInterval(checkWebpushr);
           setIsLoading(false);
           setError(
-            "Push notification service failed to load. Check console for details."
+            "Push notification service failed to load. Please refresh the page."
           );
         }
       }, 100);
@@ -53,10 +84,15 @@ export default function PushNotificationSettings() {
     }
 
     try {
-      window.webpushr("fetch_id", (sid: string) => {
-        if (sid) {
-          setIsSubscribed(true);
-          saveSubscriberId(sid);
+      // Check if SDK is fully initialized
+      window.webpushr("is_setup_done", (isSetup: boolean) => {
+        if (isSetup && typeof window.webpushr !== "undefined") {
+          window.webpushr("fetch_id", (sid: string) => {
+            if (sid) {
+              setIsSubscribed(true);
+              saveSubscriberId(sid);
+            }
+          });
         }
       });
     } catch (err) {
@@ -76,14 +112,26 @@ export default function PushNotificationSettings() {
       setIsLoading(true);
       setError(null);
 
-      window.webpushr("subscribe", (sid: string) => {
-        if (sid) {
-          setIsSubscribed(true);
-          saveSubscriberId(sid);
-        } else {
-          setError("Failed to subscribe. Please try again.");
+      // First check if SDK is fully initialized
+      window.webpushr("is_setup_done", (isSetup: boolean) => {
+        if (!isSetup || typeof window.webpushr === "undefined") {
+          setError(
+            "Push notification service is still initializing. Please wait a moment and try again."
+          );
+          setIsLoading(false);
+          return;
         }
-        setIsLoading(false);
+
+        // SDK is ready, now subscribe
+        window.webpushr("subscribe", (sid: string) => {
+          if (sid) {
+            setIsSubscribed(true);
+            saveSubscriberId(sid);
+          } else {
+            setError("Failed to subscribe. Please try again.");
+          }
+          setIsLoading(false);
+        });
       });
     } catch (error) {
       console.error("Failed to subscribe:", error);
@@ -104,10 +152,24 @@ export default function PushNotificationSettings() {
       setIsLoading(true);
       setError(null);
 
-      window.webpushr("unsubscribe");
-      setIsSubscribed(false);
-      await saveSubscriberId(null);
-      setIsLoading(false);
+      // Check if SDK is fully initialized
+      window.webpushr("is_setup_done", (isSetup: boolean) => {
+        if (!isSetup) {
+          setError(
+            "Push notification service is still initializing. Please wait a moment and try again."
+          );
+          setIsLoading(false);
+          return;
+        }
+
+        // SDK is ready, now unsubscribe
+        if (typeof window.webpushr !== "undefined") {
+          window.webpushr("unsubscribe");
+        }
+        setIsSubscribed(false);
+        saveSubscriberId(null);
+        setIsLoading(false);
+      });
     } catch (error) {
       console.error("Failed to unsubscribe:", error);
       setError("Failed to unsubscribe. Please try again.");
