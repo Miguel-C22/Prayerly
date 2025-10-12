@@ -54,36 +54,52 @@ export default function PushNotificationSettings() {
       return;
     }
 
-    try {
-      setIsLoading(true);
-      setError(null);
+    setIsLoading(true);
+    setError(null);
 
-      // First check if SDK is fully initialized
-      window.webpushr("is_setup_done", (isSetup: boolean) => {
-        if (!isSetup || typeof window.webpushr === "undefined") {
-          setError(
-            "Push notification service is still initializing. Please wait a moment and try again."
-          );
-          setIsLoading(false);
-          return;
-        }
+    // Retry logic: SDK might not be fully ready yet
+    const attemptSubscribe = (attempt: number) => {
+      if (typeof window.webpushr === "undefined") {
+        setError("Push notification service is not available.");
+        setIsLoading(false);
+        return;
+      }
 
-        // SDK is ready, now subscribe
-        window.webpushr("subscribe", (sid: string) => {
-          if (sid) {
-            setIsSubscribed(true);
-            saveSubscriberId(sid);
+      try {
+        window.webpushr("is_setup_done", (isSetup: boolean) => {
+          if (isSetup && typeof window.webpushr !== "undefined") {
+            // SDK is ready, subscribe
+            window.webpushr("subscribe", (sid: string) => {
+              if (sid) {
+                setIsSubscribed(true);
+                saveSubscriberId(sid);
+              } else {
+                setError("Failed to subscribe. Please try again.");
+              }
+              setIsLoading(false);
+            });
+          } else if (attempt < 5) {
+            // Not ready yet, retry after 500ms (max 5 attempts = 2.5 seconds)
+            setTimeout(() => attemptSubscribe(attempt + 1), 500);
           } else {
-            setError("Failed to subscribe. Please try again.");
+            // Give up after 5 attempts
+            setError("Push notification service is taking too long to initialize. Please refresh and try again.");
+            setIsLoading(false);
           }
-          setIsLoading(false);
         });
-      });
-    } catch (error) {
-      console.error("Failed to subscribe:", error);
-      setError(error instanceof Error ? error.message : "Failed to subscribe");
-      setIsLoading(false);
-    }
+      } catch (error) {
+        // If error occurs and we have retries left, try again
+        if (attempt < 5) {
+          setTimeout(() => attemptSubscribe(attempt + 1), 500);
+        } else {
+          console.error("Failed to subscribe:", error);
+          setError("Failed to subscribe. Please refresh the page and try again.");
+          setIsLoading(false);
+        }
+      }
+    };
+
+    attemptSubscribe(1);
   };
 
   const handleUnsubscribe = async () => {
