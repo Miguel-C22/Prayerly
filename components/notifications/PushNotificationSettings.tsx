@@ -5,45 +5,54 @@ import { useState, useEffect } from "react";
 export default function PushNotificationSettings() {
   const [isSupported, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // Ensure we're fully mounted on client before checking service workers
+    // Check browser support synchronously (no service worker check yet)
+    if ("Notification" in window && "serviceWorker" in navigator && "PushManager" in window) {
+      setIsSupported(true);
+    } else {
+      setIsChecking(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Only check service worker subscription after component is fully mounted
+    if (!isSupported) return;
+
     let mounted = true;
 
-    const init = async () => {
-      // Check if browser supports notifications and service workers
-      if ("Notification" in window && "serviceWorker" in navigator && "PushManager" in window) {
-        setIsSupported(true);
-
-        // Small delay to ensure hydration is complete
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        if (mounted) {
-          await checkSubscriptionStatus();
-        }
+    // Use requestIdleCallback if available, otherwise setTimeout with longer delay
+    const checkWhenIdle = () => {
+      if (typeof window.requestIdleCallback !== 'undefined') {
+        window.requestIdleCallback(() => {
+          if (mounted) checkSubscriptionStatus();
+        });
       } else {
-        setIsLoading(false);
+        setTimeout(() => {
+          if (mounted) checkSubscriptionStatus();
+        }, 500);
       }
     };
 
-    init();
+    checkWhenIdle();
 
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [isSupported]);
 
   const checkSubscriptionStatus = async () => {
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
       setIsSubscribed(!!subscription);
-      setIsLoading(false);
+      setIsChecking(false);
     } catch (error) {
       console.error("Error checking subscription:", error);
-      setIsLoading(false);
+      setIsChecking(false);
     }
   };
 
@@ -133,7 +142,7 @@ export default function PushNotificationSettings() {
     return outputArray;
   }
 
-  if (!isSupported) {
+  if (!isSupported && !isChecking) {
     return (
       <div className="text-sm text-text-graySecondary">
         Push notifications are not supported in your browser. Please use Chrome,
@@ -142,11 +151,11 @@ export default function PushNotificationSettings() {
     );
   }
 
-  if (isLoading) {
+  if (isChecking) {
     return (
       <div className="text-sm text-text-graySecondary flex items-center gap-2">
         <div className="w-4 h-4 border-2 border-text-purplePrimary border-t-transparent rounded-full animate-spin"></div>
-        Loading push notification service...
+        Checking notification status...
       </div>
     );
   }
