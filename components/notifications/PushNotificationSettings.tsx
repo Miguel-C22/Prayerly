@@ -58,8 +58,9 @@ export default function PushNotificationSettings() {
     setError(null);
 
     try {
-      // Call subscribe directly - SDK will queue it if not ready yet
-      window.webpushr("subscribe", (sid: string) => {
+      // Trigger Webpushr's built-in subscription flow (same as bell icon)
+      // This handles all timing and ready checks internally
+      window.webpushr("trigger", (sid: string) => {
         if (sid) {
           setIsSubscribed(true);
           saveSubscriberId(sid);

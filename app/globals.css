@@ -43,3 +43,11 @@
     background-color: var(--bg-white) !important;
   }
 }
+
+/* Hide Webpushr default bell icon - we use custom UI */
+.webpushr-prompt,
+.webpushr-notification-bell,
+#webpushr-prompt,
+#webpushr-notification-bell {
+  display: none !important;
+}

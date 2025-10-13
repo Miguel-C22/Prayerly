@@ -41,51 +41,75 @@ export async function GET(request: Request) {
       return Response.json({ sent: 0, message: "No reminders due" });
     }
 
-    const results = [];
+    // Group reminders by user_id and channel for batching
+    const grouped = new Map<string, Map<string, any[]>>();
 
-    // Process each reminder
     for (const reminder of dueReminders) {
+      const userId = reminder.user_id;
       const channels = Array.isArray(reminder.channel)
         ? reminder.channel
-        : [reminder.channel]; // Handle old data format
+        : [reminder.channel];
 
-      // Send to each channel
+      if (!grouped.has(userId)) {
+        grouped.set(userId, new Map());
+      }
+
+      const userChannels = grouped.get(userId)!;
+
       for (const channel of channels) {
+        if (!userChannels.has(channel)) {
+          userChannels.set(channel, []);
+        }
+        userChannels.get(channel)!.push(reminder);
+      }
+    }
+
+    const results = [];
+
+    // Send batched notifications for each user + channel combination
+    for (const [userId, channels] of grouped.entries()) {
+      for (const [channel, reminders] of channels.entries()) {
         try {
           if (channel === 'email') {
-            await sendEmailReminder(reminder);
+            await sendBatchedEmailReminder(reminders);
             results.push({
-              id: reminder.id,
+              user_id: userId,
               channel: 'email',
+              count: reminders.length,
               status: "sent"
             });
           } else if (channel === 'push') {
-            await sendPushReminder(reminder);
+            await sendBatchedPushReminder(reminders);
             results.push({
-              id: reminder.id,
+              user_id: userId,
               channel: 'push',
+              count: reminders.length,
               status: "sent"
             });
           }
         } catch (error) {
-          console.error(`Failed to send ${channel} reminder:`, error);
+          console.error(`Failed to send ${channel} reminder for user ${userId}:`, error);
           results.push({
-            id: reminder.id,
+            user_id: userId,
             channel,
+            count: reminders.length,
             status: "failed",
             error: String(error)
           });
         }
       }
+    }
 
-      // Update next run time (once per reminder, not per channel)
+    // Update next run time for all reminders
+    for (const reminder of dueReminders) {
       await updateNextRunTime(reminder, supabase);
     }
 
     return Response.json({
       sent: results.filter((r) => r.status === "sent").length,
       failed: results.filter((r) => r.status === "failed").length,
-      total: dueReminders.length,
+      totalReminders: dueReminders.length,
+      totalNotifications: results.length,
       results,
     });
   } catch (error) {
@@ -94,51 +118,78 @@ export async function GET(request: Request) {
   }
 }
 
-// Send email reminder for a single prayer
-async function sendEmailReminder(reminder: any) {
-  const email = reminder.destination?.email;
+// Send batched email reminder for multiple prayers
+async function sendBatchedEmailReminder(reminders: any[]) {
+  if (reminders.length === 0) return;
+
+  const email = reminders[0].destination?.email;
   if (!email) {
     throw new Error("No email address in destination");
   }
 
-  const prayer = {
+  // Collect all prayers
+  const prayers = reminders.map(reminder => ({
     title: reminder.prayers?.title || "Your Prayer",
     description: reminder.prayers?.description || "",
     category: reminder.prayers?.category || "",
-  };
+  }));
+
+  // Send one email with all prayers
+  const subject = prayers.length === 1
+    ? `Prayer Reminder: ${prayers[0].title}`
+    : `Prayer Reminders: ${prayers.length} prayers`;
 
   const { data, error } = await resend.emails.send({
     from: "Prayerly <reminders@resend.dev>",
     to: email,
-    subject: `Prayer Reminder: ${prayer.title}`,
-    react: PrayerReminderEmail({ prayers: [prayer] }),
+    subject,
+    react: PrayerReminderEmail({ prayers }),
   });
 
   if (error) {
     throw new Error(`Resend error: ${error.message}`);
   }
 
-  // Log to reminder_logs
+  // Log to reminder_logs for each reminder
   const logSupabase = createAdminClient();
-  await logSupabase.from("reminder_logs").insert({
-    reminder_id: reminder.id,
-    sent_at: new Date().toISOString(),
-    channel: 'email',
-    status: "sent",
-    metadata: { resend_id: data?.id },
-  });
+  for (const reminder of reminders) {
+    await logSupabase.from("reminder_logs").insert({
+      reminder_id: reminder.id,
+      sent_at: new Date().toISOString(),
+      channel: 'email',
+      status: "sent",
+      metadata: { resend_id: data?.id, batched: true, batch_size: reminders.length },
+    });
+  }
 }
 
-// Send push notification via Webpushr REST API
-async function sendPushReminder(reminder: any) {
-  const subscriberId = reminder.destination?.push_subscriber_id;
+// Send batched push notification for multiple prayers
+async function sendBatchedPushReminder(reminders: any[]) {
+  if (reminders.length === 0) return;
+
+  const subscriberId = reminders[0].destination?.push_subscriber_id;
   if (!subscriberId) {
     throw new Error("No push subscriber ID in destination");
   }
 
-  const prayer = reminder.prayers || {};
-  const title = `Prayer Reminder: ${prayer.title || 'Your Prayer'}`;
-  const message = prayer.description || 'Time to pray for your request';
+  // Format message based on number of prayers
+  let title: string;
+  let message: string;
+
+  if (reminders.length === 1) {
+    const prayer = reminders[0].prayers || {};
+    title = `Prayer Reminder: ${prayer.title || 'Your Prayer'}`;
+    message = prayer.description || 'Time to pray for your request';
+  } else {
+    title = `Prayer Reminders: ${reminders.length} prayers`;
+    const prayerTitles = reminders
+      .slice(0, 3)
+      .map(r => r.prayers?.title || 'Prayer')
+      .join(', ');
+    message = reminders.length > 3
+      ? `${prayerTitles}, and ${reminders.length - 3} more...`
+      : prayerTitles;
+  }
 
   // Call Webpushr REST API
   const response = await fetch('https://api.webpushr.com/v1/notification/send/sid', {
@@ -151,7 +202,7 @@ async function sendPushReminder(reminder: any) {
     body: JSON.stringify({
       title,
       message,
-      target_url: `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/prayers`,
+      target_url: 'https://prayerly-livid.vercel.app/prayers',
       sid: subscriberId,
     }),
   });
@@ -161,15 +212,17 @@ async function sendPushReminder(reminder: any) {
     throw new Error(`Webpushr API error: ${errorText}`);
   }
 
-  // Log to reminder_logs
+  // Log to reminder_logs for each reminder
   const logSupabase = createAdminClient();
-  await logSupabase.from("reminder_logs").insert({
-    reminder_id: reminder.id,
-    sent_at: new Date().toISOString(),
-    channel: 'push',
-    status: "sent",
-    metadata: { subscriber_id: subscriberId },
-  });
+  for (const reminder of reminders) {
+    await logSupabase.from("reminder_logs").insert({
+      reminder_id: reminder.id,
+      sent_at: new Date().toISOString(),
+      channel: 'push',
+      status: "sent",
+      metadata: { subscriber_id: subscriberId, batched: true, batch_size: reminders.length },
+    });
+  }
 }
 
 async function updateNextRunTime(reminder: any, supabase: any) {
