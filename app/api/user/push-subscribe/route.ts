@@ -16,13 +16,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse the request body
-    const { subscription } = await request.json();
+    const { subscription, subscriberId: unsubscribeId } = await request.json();
 
-    // If unsubscribing
+    // If unsubscribing - delete this device's subscription
     if (!subscription) {
-      await supabase.auth.updateUser({
-        data: { webpushr_subscriber_id: null },
-      });
+      // If unsubscribeId provided, delete specific subscription
+      if (unsubscribeId) {
+        await supabase
+          .from("push_subscriptions")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("subscriber_id", unsubscribeId);
+      } else {
+        // If no unsubscribeId, try to find by subscription endpoint
+        const endpoint = subscription?.endpoint;
+        if (endpoint) {
+          await supabase
+            .from("push_subscriptions")
+            .delete()
+            .eq("user_id", user.id)
+            .contains("subscription_data", { endpoint });
+        }
+      }
 
       return NextResponse.json({
         success: true,
@@ -63,59 +78,91 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Store subscriber ID in user metadata
-    const { error } = await supabase.auth.updateUser({
-      data: {
-        webpushr_subscriber_id: subscriberId,
-      },
-    });
+    // Get device info from user agent
+    const userAgent = request.headers.get("user-agent") || "";
+    const deviceInfo = {
+      userAgent,
+      browser: getBrowserInfo(userAgent),
+      createdAt: new Date().toISOString(),
+    };
 
-    if (error) {
-      console.error("Error saving push subscription:", error);
-      return NextResponse.json(
-        { error: "Failed to save subscription" },
-        { status: 500 }
-      );
+    // Check if this subscription already exists
+    const { data: existing } = await supabase
+      .from("push_subscriptions")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("subscriber_id", subscriberId)
+      .single();
+
+    if (existing) {
+      // Update last_used_at
+      await supabase
+        .from("push_subscriptions")
+        .update({ last_used_at: new Date().toISOString() })
+        .eq("id", existing.id);
+    } else {
+      // Insert new subscription
+      const { error: insertError } = await supabase
+        .from("push_subscriptions")
+        .insert({
+          user_id: user.id,
+          subscriber_id: subscriberId,
+          device_info: deviceInfo,
+          subscription_data: subscription,
+          created_at: new Date().toISOString(),
+          last_used_at: new Date().toISOString(),
+        });
+
+      if (insertError) {
+        console.error("Error saving push subscription:", insertError);
+        return NextResponse.json(
+          { error: "Failed to save subscription" },
+          { status: 500 }
+        );
+      }
     }
 
-    // Auto-enable push for all existing prayers
-    try {
-      // Get all reminders for this user
-      const { data: reminders, error: fetchError } = await supabase
-        .from("reminders")
-        .select("id, channel, destination")
-        .eq("user_id", user.id);
+    // Check if user has any existing push subscriptions
+    const { data: userSubscriptions } = await supabase
+      .from("push_subscriptions")
+      .select("id")
+      .eq("user_id", user.id);
 
-      if (!fetchError && reminders) {
-        // Update each reminder to include push channel
-        for (const reminder of reminders) {
-          const channels = Array.isArray(reminder.channel)
-            ? reminder.channel
-            : [reminder.channel].filter(Boolean);
+    // Auto-enable push for all existing prayers (only if this is their first device)
+    if (userSubscriptions && userSubscriptions.length === 1) {
+      try {
+        // Get all reminders for this user
+        const { data: reminders, error: fetchError } = await supabase
+          .from("reminders")
+          .select("id, channel, destination")
+          .eq("user_id", user.id);
 
-          // Only update if push not already in channels
-          if (!channels.includes("push")) {
-            const updatedChannels = [...channels, "push"];
+        if (!fetchError && reminders) {
+          // Update each reminder to include push channel
+          for (const reminder of reminders) {
+            const channels = Array.isArray(reminder.channel)
+              ? reminder.channel
+              : [reminder.channel].filter(Boolean);
 
-            // Update destination to include push subscriber ID
-            const updatedDestination = {
-              ...reminder.destination,
-              push_subscriber_id: subscriberId,
-            };
+            // Only update if push not already in channels
+            if (!channels.includes("push")) {
+              const updatedChannels = [...channels, "push"];
 
-            await supabase
-              .from("reminders")
-              .update({
-                channel: updatedChannels,
-                destination: updatedDestination,
-              })
-              .eq("id", reminder.id);
+              // Note: destination.push_subscriber_id is no longer used
+              // We'll fetch all user subscriptions when sending
+              await supabase
+                .from("reminders")
+                .update({
+                  channel: updatedChannels,
+                })
+                .eq("id", reminder.id);
+            }
           }
         }
+      } catch (updateError) {
+        // Log but don't fail the whole request
+        console.error("Error auto-enabling push for prayers:", updateError);
       }
-    } catch (updateError) {
-      // Log but don't fail the whole request
-      console.error("Error auto-enabling push for prayers:", updateError);
     }
 
     return NextResponse.json({
@@ -129,4 +176,14 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Helper to extract browser info from user agent
+function getBrowserInfo(userAgent: string): string {
+  if (userAgent.includes("Chrome")) return "Chrome";
+  if (userAgent.includes("Firefox")) return "Firefox";
+  if (userAgent.includes("Safari")) return "Safari";
+  if (userAgent.includes("Edge")) return "Edge";
+  if (userAgent.includes("Opera")) return "Opera";
+  return "Unknown";
 }

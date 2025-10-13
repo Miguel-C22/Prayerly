@@ -163,13 +163,24 @@ async function sendBatchedEmailReminder(reminders: any[]) {
   }
 }
 
-// Send batched push notification for multiple prayers
+// Send batched push notification for multiple prayers to all user devices
 async function sendBatchedPushReminder(reminders: any[]) {
   if (reminders.length === 0) return;
 
-  const subscriberId = reminders[0].destination?.push_subscriber_id;
-  if (!subscriberId) {
-    throw new Error("No push subscriber ID in destination");
+  const userId = reminders[0].user_id;
+  if (!userId) {
+    throw new Error("No user ID in reminder");
+  }
+
+  // Get all push subscriptions for this user
+  const supabase = createAdminClient();
+  const { data: subscriptions, error: subError } = await supabase
+    .from("push_subscriptions")
+    .select("subscriber_id")
+    .eq("user_id", userId);
+
+  if (subError || !subscriptions || subscriptions.length === 0) {
+    throw new Error("No push subscriptions found for user");
   }
 
   // Format message based on number of prayers
@@ -191,28 +202,35 @@ async function sendBatchedPushReminder(reminders: any[]) {
       : prayerTitles;
   }
 
-  // Call Webpushr REST API
-  const response = await fetch('https://api.webpushr.com/v1/notification/send/sid', {
-    method: 'POST',
-    headers: {
-      'webpushrKey': process.env.WEBPUSHR_REST_API_KEY!,
-      'webpushrAuthToken': process.env.WEBPUSHR_AUTH_TOKEN!,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      title,
-      message,
-      target_url: 'https://prayerly-livid.vercel.app/prayers',
-      sid: subscriberId,
-    }),
-  });
+  // Send to ALL user devices
+  for (const sub of subscriptions) {
+    try {
+      // Call Webpushr REST API for each device
+      const response = await fetch('https://api.webpushr.com/v1/notification/send/sid', {
+        method: 'POST',
+        headers: {
+          'webpushrKey': process.env.WEBPUSHR_REST_API_KEY!,
+          'webpushrAuthToken': process.env.WEBPUSHR_AUTH_TOKEN!,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          message,
+          target_url: 'https://prayerly-livid.vercel.app/prayers',
+          sid: sub.subscriber_id,
+        }),
+      });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Webpushr API error: ${errorText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Webpushr API error for subscriber ${sub.subscriber_id}:`, errorText);
+      }
+    } catch (error) {
+      console.error(`Failed to send to subscriber ${sub.subscriber_id}:`, error);
+    }
   }
 
-  // Log to reminder_logs for each reminder
+  // Log to reminder_logs for each reminder (one log entry per reminder, not per device)
   const logSupabase = createAdminClient();
   for (const reminder of reminders) {
     await logSupabase.from("reminder_logs").insert({
@@ -220,7 +238,11 @@ async function sendBatchedPushReminder(reminders: any[]) {
       sent_at: new Date().toISOString(),
       channel: 'push',
       status: "sent",
-      metadata: { subscriber_id: subscriberId, batched: true, batch_size: reminders.length },
+      metadata: {
+        batched: true,
+        batch_size: reminders.length,
+        devices_sent: subscriptions.length,
+      },
     });
   }
 }

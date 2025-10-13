@@ -9,13 +9,30 @@ export default function PushNotificationSettings() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if browser supports notifications and service workers
-    if ("Notification" in window && "serviceWorker" in navigator && "PushManager" in window) {
-      setIsSupported(true);
-      checkSubscriptionStatus();
-    } else {
-      setIsLoading(false);
-    }
+    // Ensure we're fully mounted on client before checking service workers
+    let mounted = true;
+
+    const init = async () => {
+      // Check if browser supports notifications and service workers
+      if ("Notification" in window && "serviceWorker" in navigator && "PushManager" in window) {
+        setIsSupported(true);
+
+        // Small delay to ensure hydration is complete
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        if (mounted) {
+          await checkSubscriptionStatus();
+        }
+      } else {
+        setIsLoading(false);
+      }
+    };
+
+    init();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const checkSubscriptionStatus = async () => {
