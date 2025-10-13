@@ -61,6 +61,15 @@ export default function PushNotificationSettings() {
     setError(null);
 
     try {
+      // Check if VAPID key is available
+      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!vapidKey) {
+        console.error("VAPID key not found in environment variables");
+        setError("Push notification configuration error. Please contact support.");
+        setIsLoading(false);
+        return;
+      }
+
       // Request notification permission
       const permission = await Notification.requestPermission();
 
@@ -77,7 +86,7 @@ export default function PushNotificationSettings() {
       // Subscribe to push notifications with VAPID key
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!),
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
       });
 
       // Send subscription to our backend
