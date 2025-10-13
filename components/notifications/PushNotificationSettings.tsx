@@ -15,11 +15,8 @@ export default function PushNotificationSettings() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // Set to false immediately to avoid hydration issues
-    setIsChecking(false);
 
     // Check browser support
     if (!("Notification" in window && "serviceWorker" in navigator && "PushManager" in window)) {
