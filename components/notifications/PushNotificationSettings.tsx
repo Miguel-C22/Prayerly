@@ -2,6 +2,14 @@
 
 import { useState, useEffect } from "react";
 
+// Extend window type for OneSignal
+declare global {
+  interface Window {
+    OneSignalDeferred?: any[];
+    OneSignal?: any;
+  }
+}
+
 export default function PushNotificationSettings() {
   const [isSupported, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -10,100 +18,80 @@ export default function PushNotificationSettings() {
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // Check browser support synchronously (no service worker check yet)
+    // Check browser support
     if ("Notification" in window && "serviceWorker" in navigator && "PushManager" in window) {
       setIsSupported(true);
     } else {
       setIsChecking(false);
+      return;
     }
-  }, []);
 
-  useEffect(() => {
-    // Only check service worker subscription after component is fully mounted
-    if (!isSupported) return;
+    // Check OneSignal subscription status
+    const checkSubscription = async () => {
+      try {
+        if (!window.OneSignalDeferred) {
+          setIsChecking(false);
+          return;
+        }
 
-    let mounted = true;
-
-    // Use requestIdleCallback if available, otherwise setTimeout with longer delay
-    const checkWhenIdle = () => {
-      if (typeof window.requestIdleCallback !== 'undefined') {
-        window.requestIdleCallback(() => {
-          if (mounted) checkSubscriptionStatus();
+        window.OneSignalDeferred.push(async (OneSignal: any) => {
+          const isPushEnabled = await OneSignal.User.PushSubscription.optedIn;
+          setIsSubscribed(isPushEnabled);
+          setIsChecking(false);
         });
-      } else {
-        setTimeout(() => {
-          if (mounted) checkSubscriptionStatus();
-        }, 500);
+      } catch (error) {
+        console.error("Error checking OneSignal subscription:", error);
+        setIsChecking(false);
       }
     };
 
-    checkWhenIdle();
-
-    return () => {
-      mounted = false;
-    };
-  }, [isSupported]);
-
-  const checkSubscriptionStatus = async () => {
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      setIsSubscribed(!!subscription);
-      setIsChecking(false);
-    } catch (error) {
-      console.error("Error checking subscription:", error);
-      setIsChecking(false);
-    }
-  };
+    // Wait for OneSignal to load
+    const timer = setTimeout(checkSubscription, 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSubscribe = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Check if VAPID key is available
-      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!vapidKey) {
-        console.error("VAPID key not found in environment variables");
-        setError("Push notification configuration error. Please contact support.");
-        setIsLoading(false);
-        return;
+      if (!window.OneSignalDeferred) {
+        throw new Error("OneSignal not loaded. Please refresh the page.");
       }
 
-      // Request notification permission
-      const permission = await Notification.requestPermission();
+      window.OneSignalDeferred.push(async (OneSignal: any) => {
+        try {
+          // Request permission and subscribe
+          await OneSignal.Slidedown.promptPush();
 
-      if (permission !== "granted") {
-        setError("Notification permission denied. Please enable notifications in your browser settings.");
-        setIsLoading(false);
-        return;
-      }
+          // Get the subscription ID (player ID)
+          const subscriberId = await OneSignal.User.PushSubscription.id;
 
-      // Register service worker
-      const registration = await navigator.serviceWorker.register("/webpushr-sw.js");
-      await navigator.serviceWorker.ready;
+          if (!subscriberId) {
+            throw new Error("Failed to get subscription ID");
+          }
 
-      // Subscribe to push notifications with VAPID key
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+          // Send to our backend to save in database
+          const response = await fetch("/api/user/push-subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              subscriberId: subscriberId,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to save subscription");
+          }
+
+          setIsSubscribed(true);
+          setIsLoading(false);
+        } catch (error) {
+          console.error("OneSignal subscription error:", error);
+          setError(error instanceof Error ? error.message : "Failed to subscribe");
+          setIsLoading(false);
+        }
       });
-
-      // Send subscription to our backend
-      const response = await fetch("/api/user/push-subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subscription: subscription.toJSON(),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to register subscription");
-      }
-
-      setIsSubscribed(true);
-      setIsLoading(false);
     } catch (error) {
       console.error("Failed to subscribe:", error);
       setError(error instanceof Error ? error.message : "Failed to subscribe. Please try again.");
@@ -116,40 +104,42 @@ export default function PushNotificationSettings() {
     setError(null);
 
     try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-
-      if (subscription) {
-        await subscription.unsubscribe();
+      if (!window.OneSignalDeferred) {
+        throw new Error("OneSignal not loaded");
       }
 
-      // Notify backend
-      await fetch("/api/user/push-subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subscription: null }),
-      });
+      window.OneSignalDeferred.push(async (OneSignal: any) => {
+        try {
+          // Get subscriber ID before unsubscribing
+          const subscriberId = await OneSignal.User.PushSubscription.id;
 
-      setIsSubscribed(false);
-      setIsLoading(false);
+          // Unsubscribe from OneSignal
+          await OneSignal.User.PushSubscription.optOut();
+
+          // Notify backend
+          await fetch("/api/user/push-subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              subscription: null,
+              subscriberId: subscriberId
+            }),
+          });
+
+          setIsSubscribed(false);
+          setIsLoading(false);
+        } catch (error) {
+          console.error("OneSignal unsubscribe error:", error);
+          setError("Failed to unsubscribe");
+          setIsLoading(false);
+        }
+      });
     } catch (error) {
       console.error("Failed to unsubscribe:", error);
       setError("Failed to unsubscribe. Please try again.");
       setIsLoading(false);
     }
   };
-
-  // Helper function to convert VAPID key
-  function urlBase64ToUint8Array(base64String: string) {
-    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-  }
 
   if (!isSupported && !isChecking) {
     return (

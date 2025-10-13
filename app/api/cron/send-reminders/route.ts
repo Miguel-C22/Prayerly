@@ -202,32 +202,43 @@ async function sendBatchedPushReminder(reminders: any[]) {
       : prayerTitles;
   }
 
-  // Send to ALL user devices
-  for (const sub of subscriptions) {
-    try {
-      // Call Webpushr REST API for each device
-      const response = await fetch('https://api.webpushr.com/v1/notification/send/sid', {
-        method: 'POST',
-        headers: {
-          'webpushrKey': process.env.WEBPUSHR_REST_API_KEY!,
-          'webpushrAuthToken': process.env.WEBPUSHR_AUTH_TOKEN!,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title,
-          message,
-          target_url: 'https://prayerly-livid.vercel.app/prayers',
-          sid: sub.subscriber_id,
-        }),
-      });
+  // Send to ALL user devices using OneSignal
+  // OneSignal allows up to 2000 player_ids per request
+  const playerIds = subscriptions.map(sub => sub.subscriber_id);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Webpushr API error for subscriber ${sub.subscriber_id}:`, errorText);
-      }
-    } catch (error) {
-      console.error(`Failed to send to subscriber ${sub.subscriber_id}:`, error);
+  try {
+    // Call OneSignal REST API to send notification
+    const response = await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${process.env.ONESIGNAL_REST_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        app_id: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID,
+        include_player_ids: playerIds,
+        headings: { en: title },
+        contents: { en: message },
+        url: 'https://prayerly-livid.vercel.app/prayers',
+        // Optional: Add custom data
+        data: {
+          prayer_count: reminders.length,
+          type: 'prayer_reminder',
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`OneSignal API error:`, errorText);
+      throw new Error(`OneSignal API error: ${errorText}`);
     }
+
+    const responseData = await response.json();
+    console.log(`OneSignal notification sent. ID: ${responseData.id}, Recipients: ${responseData.recipients}`);
+  } catch (error) {
+    console.error(`Failed to send push notification:`, error);
+    throw error; // Re-throw to mark as failed in results
   }
 
   // Log to reminder_logs for each reminder (one log entry per reminder, not per device)

@@ -16,28 +16,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse the request body
-    const { subscription, subscriberId: unsubscribeId } = await request.json();
+    const { subscription, subscriberId } = await request.json();
 
     // If unsubscribing - delete this device's subscription
-    if (!subscription) {
-      // If unsubscribeId provided, delete specific subscription
-      if (unsubscribeId) {
-        await supabase
-          .from("push_subscriptions")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("subscriber_id", unsubscribeId);
-      } else {
-        // If no unsubscribeId, try to find by subscription endpoint
-        const endpoint = subscription?.endpoint;
-        if (endpoint) {
-          await supabase
-            .from("push_subscriptions")
-            .delete()
-            .eq("user_id", user.id)
-            .contains("subscription_data", { endpoint });
-        }
-      }
+    if (!subscription && subscriberId) {
+      await supabase
+        .from("push_subscriptions")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("subscriber_id", subscriberId);
 
       return NextResponse.json({
         success: true,
@@ -45,36 +32,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Register subscription with Webpushr REST API
-    const webpushrResponse = await fetch("https://api.webpushr.com/v1/subscription/save", {
-      method: "POST",
-      headers: {
-        "webpushrKey": process.env.WEBPUSHR_REST_API_KEY!,
-        "webpushrAuthToken": process.env.WEBPUSHR_AUTH_TOKEN!,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        subscription_data: subscription,
-      }),
-    });
-
-    if (!webpushrResponse.ok) {
-      const errorText = await webpushrResponse.text();
-      console.error("Webpushr API error:", errorText);
-      return NextResponse.json(
-        { error: "Failed to register with push service" },
-        { status: 500 }
-      );
-    }
-
-    const webpushrData = await webpushrResponse.json();
-    const subscriberId = webpushrData.sid || webpushrData.subscriber_id;
-
+    // If subscribing - OneSignal SDK has already created the player
+    // We just need to save the subscriber ID to our database
     if (!subscriberId) {
-      console.error("No subscriber ID in Webpushr response:", webpushrData);
       return NextResponse.json(
-        { error: "Failed to get subscriber ID" },
-        { status: 500 }
+        { error: "No subscriber ID provided" },
+        { status: 400 }
       );
     }
 
@@ -85,6 +48,25 @@ export async function POST(request: NextRequest) {
       browser: getBrowserInfo(userAgent),
       createdAt: new Date().toISOString(),
     };
+
+    // Tag the OneSignal player with our user ID for targeting
+    try {
+      await fetch(`https://onesignal.com/api/v1/players/${subscriberId}`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Basic ${process.env.ONESIGNAL_REST_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tags: {
+            user_id: user.id,
+          },
+        }),
+      });
+    } catch (error) {
+      console.error("Failed to tag OneSignal player:", error);
+      // Continue anyway - not critical
+    }
 
     // Check if this subscription already exists
     const { data: existing } = await supabase
@@ -108,7 +90,7 @@ export async function POST(request: NextRequest) {
           user_id: user.id,
           subscriber_id: subscriberId,
           device_info: deviceInfo,
-          subscription_data: subscription,
+          subscription_data: {}, // OneSignal SDK manages subscription data
           created_at: new Date().toISOString(),
           last_used_at: new Date().toISOString(),
         });
