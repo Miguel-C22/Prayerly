@@ -18,35 +18,39 @@ export default function PushNotificationSettings() {
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
+    // Set to false immediately to avoid hydration issues
+    setIsChecking(false);
+
     // Check browser support
-    if ("Notification" in window && "serviceWorker" in navigator && "PushManager" in window) {
-      setIsSupported(true);
-    } else {
-      setIsChecking(false);
+    if (!("Notification" in window && "serviceWorker" in navigator && "PushManager" in window)) {
+      setIsSupported(false);
       return;
     }
 
-    // Check OneSignal subscription status
+    setIsSupported(true);
+
+    // Check OneSignal subscription status after component mounts
     const checkSubscription = async () => {
       try {
         if (!window.OneSignalDeferred) {
-          setIsChecking(false);
           return;
         }
 
         window.OneSignalDeferred.push(async (OneSignal: any) => {
-          const isPushEnabled = await OneSignal.User.PushSubscription.optedIn;
-          setIsSubscribed(isPushEnabled);
-          setIsChecking(false);
+          try {
+            const isPushEnabled = await OneSignal.User.PushSubscription.optedIn;
+            setIsSubscribed(isPushEnabled);
+          } catch (error) {
+            console.error("Error checking subscription status:", error);
+          }
         });
       } catch (error) {
         console.error("Error checking OneSignal subscription:", error);
-        setIsChecking(false);
       }
     };
 
     // Wait for OneSignal to load
-    const timer = setTimeout(checkSubscription, 1000);
+    const timer = setTimeout(checkSubscription, 2000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -141,20 +145,11 @@ export default function PushNotificationSettings() {
     }
   };
 
-  if (!isSupported && !isChecking) {
+  if (!isSupported) {
     return (
       <div className="text-sm text-text-graySecondary">
         Push notifications are not supported in your browser. Please use Chrome,
         Firefox, Edge, or Safari 16+.
-      </div>
-    );
-  }
-
-  if (isChecking) {
-    return (
-      <div className="text-sm text-text-graySecondary flex items-center gap-2">
-        <div className="w-4 h-4 border-2 border-text-purplePrimary border-t-transparent rounded-full animate-spin"></div>
-        Checking notification status...
       </div>
     );
   }

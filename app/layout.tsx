@@ -58,6 +58,9 @@ export default function RootLayout({
               OneSignalDeferred.push(async function(OneSignal) {
                 await OneSignal.init({
                   appId: "${process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID}",
+                  serviceWorkerPath: "/OneSignalSDKWorker.js",
+                  serviceWorkerParam: { scope: "/" },
+                  allowLocalhostAsSecureOrigin: true,
                 });
               });
             `,
