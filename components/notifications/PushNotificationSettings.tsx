@@ -2,13 +2,6 @@
 
 import { useState, useEffect } from "react";
 
-// Extend Window interface for TypeScript
-declare global {
-  interface Window {
-    webpushr?: ((command: string, ...args: any[]) => void) & { q?: any[] };
-  }
-}
-
 export default function PushNotificationSettings() {
   const [isSupported, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -16,83 +9,93 @@ export default function PushNotificationSettings() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if browser supports notifications
-    if ("Notification" in window && "serviceWorker" in navigator) {
+    // Check if browser supports notifications and service workers
+    if ("Notification" in window && "serviceWorker" in navigator && "PushManager" in window) {
       setIsSupported(true);
-      let attempts = 0;
-      const maxAttempts = 50; // 5 seconds
-
-      // Wait for Webpushr SDK stub to load
-      const checkWebpushr = setInterval(() => {
-        attempts++;
-
-        if (typeof window.webpushr !== "undefined") {
-          // SDK stub exists, that's all we need to show the UI
-          clearInterval(checkWebpushr);
-          setIsLoading(false);
-        } else if (attempts >= maxAttempts) {
-          // Timeout - SDK failed to load
-          clearInterval(checkWebpushr);
-          setIsLoading(false);
-          setError(
-            "Push notification service failed to load. Please refresh the page."
-          );
-        }
-      }, 100);
-
-      return () => clearInterval(checkWebpushr);
+      checkSubscriptionStatus();
     } else {
       setIsLoading(false);
     }
   }, []);
 
-  const handleSubscribe = async () => {
-    if (typeof window.webpushr === "undefined") {
-      setError(
-        "Push notification service is not ready. Please refresh the page."
-      );
-      return;
+  const checkSubscriptionStatus = async () => {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      setIsSubscribed(!!subscription);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error checking subscription:", error);
+      setIsLoading(false);
     }
+  };
 
+  const handleSubscribe = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Trigger Webpushr's built-in subscription flow (same as bell icon)
-      // This handles all timing and ready checks internally
-      window.webpushr("trigger", (sid: string) => {
-        if (sid) {
-          setIsSubscribed(true);
-          saveSubscriberId(sid);
-          setIsLoading(false);
-        } else {
-          setError("Failed to subscribe. Please try again.");
-          setIsLoading(false);
-        }
+      // Request notification permission
+      const permission = await Notification.requestPermission();
+
+      if (permission !== "granted") {
+        setError("Notification permission denied. Please enable notifications in your browser settings.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Register service worker
+      const registration = await navigator.serviceWorker.register("/webpushr-sw.js");
+      await navigator.serviceWorker.ready;
+
+      // Subscribe to push notifications with VAPID key
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!),
       });
+
+      // Send subscription to our backend
+      const response = await fetch("/api/user/push-subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subscription: subscription.toJSON(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to register subscription");
+      }
+
+      setIsSubscribed(true);
+      setIsLoading(false);
     } catch (error) {
       console.error("Failed to subscribe:", error);
-      setError("Failed to subscribe. Please try again.");
+      setError(error instanceof Error ? error.message : "Failed to subscribe. Please try again.");
       setIsLoading(false);
     }
   };
 
   const handleUnsubscribe = async () => {
-    if (typeof window.webpushr === "undefined") {
-      setError(
-        "Push notification service is not ready. Please refresh the page."
-      );
-      return;
-    }
+    setIsLoading(true);
+    setError(null);
 
     try {
-      setIsLoading(true);
-      setError(null);
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
 
-      // Call unsubscribe directly - SDK will handle it
-      window.webpushr("unsubscribe");
+      if (subscription) {
+        await subscription.unsubscribe();
+      }
+
+      // Notify backend
+      await fetch("/api/user/push-subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscription: null }),
+      });
+
       setIsSubscribed(false);
-      await saveSubscriberId(null);
       setIsLoading(false);
     } catch (error) {
       console.error("Failed to unsubscribe:", error);
@@ -101,21 +104,17 @@ export default function PushNotificationSettings() {
     }
   };
 
-  const saveSubscriberId = async (sid: string | null) => {
-    try {
-      const response = await fetch("/api/user/push-subscription", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subscriberId: sid }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to save subscription");
-      }
-    } catch (error) {
-      console.error("Error saving subscriber ID:", error);
+  // Helper function to convert VAPID key
+  function urlBase64ToUint8Array(base64String: string) {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
     }
-  };
+    return outputArray;
+  }
 
   if (!isSupported) {
     return (

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
-import WebpushrInit from "@/components/WebpushrInit";
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -53,7 +52,6 @@ export default function RootLayout({
         />
       </head>
       <body className={`${geistSans.className} antialiased`}>
-        <WebpushrInit />
         <ThemeProvider
           attribute="data-theme"
           defaultTheme="dark"

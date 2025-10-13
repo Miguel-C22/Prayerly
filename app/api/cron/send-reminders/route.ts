@@ -195,7 +195,7 @@ async function sendBatchedPushReminder(reminders: any[]) {
   const response = await fetch('https://api.webpushr.com/v1/notification/send/sid', {
     method: 'POST',
     headers: {
-      'webpushrKey': process.env.NEXT_PUBLIC_WEBPUSHR_PUBLIC_KEY!,
+      'webpushrKey': process.env.WEBPUSHR_REST_API_KEY!,
       'webpushrAuthToken': process.env.WEBPUSHR_AUTH_TOKEN!,
       'Content-Type': 'application/json',
     },
