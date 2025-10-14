@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
     const { subscription, subscriberId } = await request.json();
 
     // If unsubscribing - delete this device's subscription
-    if (!subscription && subscriberId) {
+    // Check explicitly for null (not just falsy) to distinguish from undefined
+    if (subscription === null && subscriberId) {
       await supabase
         .from("push_subscriptions")
         .delete()
@@ -78,12 +79,14 @@ export async function POST(request: NextRequest) {
 
     if (existing) {
       // Update last_used_at
+      console.log(`Updating existing subscription for user ${user.id}, subscriber ${subscriberId}`);
       await supabase
         .from("push_subscriptions")
         .update({ last_used_at: new Date().toISOString() })
         .eq("id", existing.id);
     } else {
       // Insert new subscription
+      console.log(`Inserting new subscription for user ${user.id}, subscriber ${subscriberId}`);
       const { error: insertError } = await supabase
         .from("push_subscriptions")
         .insert({
@@ -98,10 +101,11 @@ export async function POST(request: NextRequest) {
       if (insertError) {
         console.error("Error saving push subscription:", insertError);
         return NextResponse.json(
-          { error: "Failed to save subscription" },
+          { error: "Failed to save subscription", details: insertError.message },
           { status: 500 }
         );
       }
+      console.log(`Successfully inserted subscription to database`);
     }
 
     // Check if user has any existing push subscriptions
