@@ -17,7 +17,6 @@ export default function PushNotificationSettings() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-
     // Check browser support
     if (!("Notification" in window && "serviceWorker" in navigator && "PushManager" in window)) {
       setIsSupported(false);
@@ -26,29 +25,21 @@ export default function PushNotificationSettings() {
 
     setIsSupported(true);
 
-    // Check OneSignal subscription status after component mounts
+    // Check subscription status from Supabase (much faster than polling OneSignal)
     const checkSubscription = async () => {
       try {
-        if (!window.OneSignalDeferred) {
-          return;
+        const response = await fetch("/api/user/push-subscription-status");
+        if (response.ok) {
+          const data = await response.json();
+          setIsSubscribed(data.isSubscribed);
+          console.log("Push subscription status from database:", data.isSubscribed);
         }
-
-        window.OneSignalDeferred.push(async (OneSignal: any) => {
-          try {
-            const isPushEnabled = await OneSignal.User.PushSubscription.optedIn;
-            setIsSubscribed(isPushEnabled);
-          } catch (error) {
-            console.error("Error checking subscription status:", error);
-          }
-        });
       } catch (error) {
-        console.error("Error checking OneSignal subscription:", error);
+        console.error("Error checking subscription status:", error);
       }
     };
 
-    // Wait for OneSignal to load
-    const timer = setTimeout(checkSubscription, 2000);
-    return () => clearTimeout(timer);
+    checkSubscription();
   }, []);
 
   const handleSubscribe = async () => {
@@ -65,11 +56,25 @@ export default function PushNotificationSettings() {
           // Request permission and subscribe
           await OneSignal.Slidedown.promptPush();
 
-          // Get the subscription ID (player ID)
-          const subscriberId = await OneSignal.User.PushSubscription.id;
+          // Wait for subscription to complete and get ID
+          // Poll for up to 10 seconds
+          let subscriberId = null;
+          let attempts = 0;
+          const maxAttempts = 20; // 10 seconds (20 * 500ms)
+
+          while (!subscriberId && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            subscriberId = await OneSignal.User.PushSubscription.id;
+            attempts++;
+
+            if (subscriberId) {
+              console.log("Got OneSignal subscriber ID:", subscriberId);
+              break;
+            }
+          }
 
           if (!subscriberId) {
-            throw new Error("Failed to get subscription ID");
+            throw new Error("Failed to get subscription ID from OneSignal. Please try again.");
           }
 
           // Send to our backend to save in database
@@ -82,9 +87,11 @@ export default function PushNotificationSettings() {
           });
 
           if (!response.ok) {
-            throw new Error("Failed to save subscription");
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Failed to save subscription");
           }
 
+          console.log("Successfully subscribed to push notifications");
           setIsSubscribed(true);
           setIsLoading(false);
         } catch (error) {
@@ -113,12 +120,18 @@ export default function PushNotificationSettings() {
         try {
           // Get subscriber ID before unsubscribing
           const subscriberId = await OneSignal.User.PushSubscription.id;
+          console.log("Unsubscribing OneSignal player:", subscriberId);
+
+          if (!subscriberId) {
+            console.warn("No subscriber ID found, might already be unsubscribed");
+          }
 
           // Unsubscribe from OneSignal
           await OneSignal.User.PushSubscription.optOut();
+          console.log("OneSignal optOut successful");
 
-          // Notify backend
-          await fetch("/api/user/push-subscribe", {
+          // Notify backend to remove from database
+          const response = await fetch("/api/user/push-subscribe", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -126,6 +139,12 @@ export default function PushNotificationSettings() {
               subscriberId: subscriberId
             }),
           });
+
+          if (!response.ok) {
+            console.error("Backend unsubscribe failed:", await response.text());
+          } else {
+            console.log("Successfully unsubscribed from database");
+          }
 
           setIsSubscribed(false);
           setIsLoading(false);
