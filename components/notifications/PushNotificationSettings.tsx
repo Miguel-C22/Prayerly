@@ -187,7 +187,7 @@ export default function PushNotificationSettings() {
                 sessionStorage.removeItem(key);
               }
             });
-          } catch (e) {
+          } catch {
             // Silently fail if can't clear storage
           }
 
