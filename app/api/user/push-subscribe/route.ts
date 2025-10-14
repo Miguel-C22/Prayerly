@@ -50,9 +50,33 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
+    // Verify the player exists in OneSignal before saving
+    console.log(`Verifying OneSignal player exists: ${subscriberId}`);
+    const verifyResponse = await fetch(`https://onesignal.com/api/v1/players/${subscriberId}?app_id=${process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Basic ${process.env.ONESIGNAL_REST_API_KEY}`,
+      },
+    });
+
+    if (!verifyResponse.ok) {
+      const errorText = await verifyResponse.text();
+      console.error(`OneSignal player verification failed (${verifyResponse.status}):`, errorText);
+      return NextResponse.json(
+        {
+          error: "Player not found in OneSignal. The subscription may not have completed properly.",
+          details: `HTTP ${verifyResponse.status}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const playerData = await verifyResponse.json();
+    console.log("OneSignal player verified:", playerData.identifier || playerData.id);
+
     // Tag the OneSignal player with our user ID for targeting
     try {
-      await fetch(`https://onesignal.com/api/v1/players/${subscriberId}`, {
+      const tagResponse = await fetch(`https://onesignal.com/api/v1/players/${subscriberId}`, {
         method: "PUT",
         headers: {
           "Authorization": `Basic ${process.env.ONESIGNAL_REST_API_KEY}`,
@@ -64,9 +88,14 @@ export async function POST(request: NextRequest) {
           },
         }),
       });
+
+      if (!tagResponse.ok) {
+        console.error("Failed to tag OneSignal player:", await tagResponse.text());
+      } else {
+        console.log("Successfully tagged OneSignal player with user_id");
+      }
     } catch (error) {
       console.error("Failed to tag OneSignal player:", error);
-      // Continue anyway - not critical
     }
 
     // Check if this subscription already exists

@@ -53,28 +53,53 @@ export default function PushNotificationSettings() {
 
       window.OneSignalDeferred.push(async (OneSignal: any) => {
         try {
-          // Request permission and subscribe
-          await OneSignal.Slidedown.promptPush();
+          console.log("Starting OneSignal subscription flow...");
+
+          // Check current state before subscribing
+          const beforeState = {
+            optedIn: await OneSignal.User.PushSubscription.optedIn,
+            id: await OneSignal.User.PushSubscription.id,
+            token: await OneSignal.User.PushSubscription.token,
+          };
+          console.log("OneSignal state before subscription:", beforeState);
+
+          // If already has an ID (previously subscribed), opt back in instead of creating new
+          if (beforeState.id) {
+            console.log("Existing player found, opting back in...");
+            await OneSignal.User.PushSubscription.optIn();
+          } else {
+            // Request permission and subscribe (new user)
+            console.log("New subscription, requesting push permission...");
+            await OneSignal.Slidedown.promptPush();
+          }
 
           // Wait for subscription to complete and get ID
           // Poll for up to 10 seconds
           let subscriberId = null;
+          let token = null;
           let attempts = 0;
           const maxAttempts = 20; // 10 seconds (20 * 500ms)
 
-          while (!subscriberId && attempts < maxAttempts) {
+          while ((!subscriberId || !token) && attempts < maxAttempts) {
             await new Promise(resolve => setTimeout(resolve, 500));
             subscriberId = await OneSignal.User.PushSubscription.id;
+            token = await OneSignal.User.PushSubscription.token;
             attempts++;
 
-            if (subscriberId) {
-              console.log("Got OneSignal subscriber ID:", subscriberId);
+            console.log(`Polling attempt ${attempts}: id=${subscriberId}, hasToken=${!!token}`);
+
+            if (subscriberId && token) {
+              console.log("Got OneSignal subscriber ID with valid token:", subscriberId);
               break;
             }
           }
 
           if (!subscriberId) {
             throw new Error("Failed to get subscription ID from OneSignal. Please try again.");
+          }
+
+          if (!token) {
+            console.warn("Got subscriber ID but no push token. Subscription may not be complete.");
           }
 
           // Send to our backend to save in database
@@ -126,11 +151,23 @@ export default function PushNotificationSettings() {
             console.warn("No subscriber ID found, might already be unsubscribed");
           }
 
-          // Unsubscribe from OneSignal
+          // Properly unsubscribe from OneSignal
+          console.log("Step 1: Calling OneSignal optOut...");
           await OneSignal.User.PushSubscription.optOut();
           console.log("OneSignal optOut successful");
 
+          // Also unregister the service worker to fully clean up
+          console.log("Step 2: Unregistering service workers...");
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const registration of registrations) {
+            if (registration.active?.scriptURL.includes('OneSignal')) {
+              await registration.unregister();
+              console.log("Unregistered OneSignal service worker");
+            }
+          }
+
           // Notify backend to remove from database
+          console.log("Step 3: Removing from database...");
           const response = await fetch("/api/user/push-subscribe", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -146,6 +183,25 @@ export default function PushNotificationSettings() {
             console.log("Successfully unsubscribed from database");
           }
 
+          // Clear local state
+          console.log("Step 4: Clearing local storage...");
+          try {
+            // Clear OneSignal specific storage
+            Object.keys(localStorage).forEach(key => {
+              if (key.includes('OneSignal') || key.includes('onesignal')) {
+                localStorage.removeItem(key);
+              }
+            });
+            Object.keys(sessionStorage).forEach(key => {
+              if (key.includes('OneSignal') || key.includes('onesignal')) {
+                sessionStorage.removeItem(key);
+              }
+            });
+          } catch (e) {
+            console.warn("Couldn't clear storage:", e);
+          }
+
+          console.log("✅ Unsubscribe complete");
           setIsSubscribed(false);
           setIsLoading(false);
         } catch (error) {
