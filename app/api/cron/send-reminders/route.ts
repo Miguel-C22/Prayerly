@@ -206,6 +206,9 @@ async function sendBatchedPushReminder(reminders: any[]) {
   // OneSignal allows up to 2000 player_ids per request
   const playerIds = subscriptions.map(sub => sub.subscriber_id);
 
+  console.log(`Sending push to ${playerIds.length} device(s):`, playerIds);
+  console.log(`Title: "${title}", Message: "${message}"`);
+
   try {
     // Call OneSignal REST API to send notification
     const response = await fetch('https://onesignal.com/api/v1/notifications', {
@@ -235,7 +238,11 @@ async function sendBatchedPushReminder(reminders: any[]) {
     }
 
     const responseData = await response.json();
-    console.log(`OneSignal notification sent. ID: ${responseData.id}, Recipients: ${responseData.recipients}`);
+    console.log(`OneSignal response:`, {
+      id: responseData.id,
+      recipients: responseData.recipients,
+      errors: responseData.errors
+    });
   } catch (error) {
     console.error(`Failed to send push notification:`, error);
     throw error; // Re-throw to mark as failed in results

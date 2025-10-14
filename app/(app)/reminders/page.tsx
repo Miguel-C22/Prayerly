@@ -5,6 +5,7 @@ import { getReminders } from "@/utils/server/remindersServer";
 import { getPrayers } from "@/utils/server/prayersServer";
 import Icon from "@/components/icon/Icon";
 import PushNotificationSettings from "@/components/notifications/PushNotificationSettings";
+import OneSignalLoader from "@/components/OneSignalLoader";
 
 async function page() {
   const reminders = await getReminders();
@@ -25,6 +26,7 @@ async function page() {
 
   return (
     <AppLayout>
+      <OneSignalLoader />
       <div className="max-w-4xl mx-auto p-6 space-y-8">
         {/* Email Reminders Section */}
         <div className="mb-8">

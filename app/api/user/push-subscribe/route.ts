@@ -51,7 +51,6 @@ export async function POST(request: NextRequest) {
     };
 
     // Verify the player exists in OneSignal before saving
-    console.log(`Verifying OneSignal player exists: ${subscriberId}`);
     const verifyResponse = await fetch(`https://onesignal.com/api/v1/players/${subscriberId}?app_id=${process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID}`, {
       method: "GET",
       headers: {
@@ -71,8 +70,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const playerData = await verifyResponse.json();
-    console.log("OneSignal player verified:", playerData.identifier || playerData.id);
+    await verifyResponse.json();
 
     // Tag the OneSignal player with our user ID for targeting
     try {
@@ -83,6 +81,7 @@ export async function POST(request: NextRequest) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          app_id: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID,
           tags: {
             user_id: user.id,
           },
@@ -91,8 +90,6 @@ export async function POST(request: NextRequest) {
 
       if (!tagResponse.ok) {
         console.error("Failed to tag OneSignal player:", await tagResponse.text());
-      } else {
-        console.log("Successfully tagged OneSignal player with user_id");
       }
     } catch (error) {
       console.error("Failed to tag OneSignal player:", error);
@@ -108,14 +105,12 @@ export async function POST(request: NextRequest) {
 
     if (existing) {
       // Update last_used_at
-      console.log(`Updating existing subscription for user ${user.id}, subscriber ${subscriberId}`);
       await supabase
         .from("push_subscriptions")
         .update({ last_used_at: new Date().toISOString() })
         .eq("id", existing.id);
     } else {
       // Insert new subscription
-      console.log(`Inserting new subscription for user ${user.id}, subscriber ${subscriberId}`);
       const { error: insertError } = await supabase
         .from("push_subscriptions")
         .insert({
@@ -134,7 +129,6 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
-      console.log(`Successfully inserted subscription to database`);
     }
 
     // Check if user has any existing push subscriptions

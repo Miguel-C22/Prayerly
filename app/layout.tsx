@@ -50,22 +50,6 @@ export default function RootLayout({
             `,
           }}
         />
-        <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.OneSignalDeferred = window.OneSignalDeferred || [];
-              OneSignalDeferred.push(async function(OneSignal) {
-                await OneSignal.init({
-                  appId: "${process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID}",
-                  serviceWorkerPath: "/OneSignalSDKWorker.js",
-                  serviceWorkerParam: { scope: "/" },
-                  allowLocalhostAsSecureOrigin: true,
-                });
-              });
-            `,
-          }}
-        />
       </head>
       <body className={`${geistSans.className} antialiased`}>
         <ThemeProvider
