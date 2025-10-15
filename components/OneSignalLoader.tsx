@@ -27,7 +27,13 @@ export default function OneSignalLoader() {
           serviceWorkerPath: "/OneSignalSDKWorker.js",
           serviceWorkerParam: { scope: "/" },
           allowLocalhostAsSecureOrigin: true,
+          // Safari Web Push support
+          safari_web_id: process.env.NEXT_PUBLIC_ONESIGNAL_SAFARI_WEB_ID,
         });
+
+        // Debug: Log initialization and permission state
+        console.log("OneSignal initialized");
+        console.log("Browser notification permission:", Notification.permission);
       });
     }
   }, []);

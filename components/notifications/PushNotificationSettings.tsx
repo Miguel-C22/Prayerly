@@ -15,6 +15,7 @@ export default function PushNotificationSettings() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [permissionState, setPermissionState] = useState<NotificationPermission>("default");
 
   // Helper function to clear local OneSignal cache
   const clearLocalCache = async () => {
@@ -53,6 +54,11 @@ export default function PushNotificationSettings() {
     }
 
     setIsSupported(true);
+
+    // Check notification permission status
+    if ("Notification" in window) {
+      setPermissionState(Notification.permission);
+    }
 
     // Hybrid check: OneSignal SDK + Backend verification
     const checkSubscription = async () => {
@@ -281,6 +287,19 @@ export default function PushNotificationSettings() {
       {error && (
         <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
           {error}
+        </div>
+      )}
+
+      {permissionState === "denied" && (
+        <div className="text-sm text-orange-600 bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg">
+          <p className="font-semibold mb-1">Notifications Blocked</p>
+          <p className="text-xs">
+            You previously blocked notifications for this site. To enable them:
+          </p>
+          <ul className="text-xs mt-2 ml-4 list-disc space-y-1">
+            <li><strong>Safari:</strong> Settings → Safari → Website Settings → Notifications → Allow</li>
+            <li><strong>Chrome:</strong> Click lock icon in address bar → Site settings → Notifications → Allow</li>
+          </ul>
         </div>
       )}
 
