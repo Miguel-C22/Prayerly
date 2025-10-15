@@ -172,16 +172,19 @@ async function sendBatchedPushReminder(reminders: any[]) {
     throw new Error("No user ID in reminder");
   }
 
-  // Get all push subscriptions for this user
+  // Get all ACTIVE push subscriptions for this user
   const supabase = createAdminClient();
   const { data: subscriptions, error: subError } = await supabase
     .from("push_subscriptions")
     .select("subscriber_id")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .eq("is_subscribed", true);
 
   if (subError || !subscriptions || subscriptions.length === 0) {
-    throw new Error("No push subscriptions found for user");
+    throw new Error("No active push subscriptions found for user");
   }
+
+  const playerIds = subscriptions.map(sub => sub.subscriber_id);
 
   // Format message based on number of prayers
   let title: string;
@@ -204,7 +207,6 @@ async function sendBatchedPushReminder(reminders: any[]) {
 
   // Send to ALL user devices using OneSignal
   // OneSignal allows up to 2000 player_ids per request
-  const playerIds = subscriptions.map(sub => sub.subscriber_id);
 
   console.log(`Sending push to ${playerIds.length} device(s):`, playerIds);
   console.log(`Title: "${title}", Message: "${message}"`);

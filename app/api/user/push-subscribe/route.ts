@@ -18,18 +18,21 @@ export async function POST(request: NextRequest) {
     // Parse the request body
     const { subscription, subscriberId } = await request.json();
 
-    // If unsubscribing - delete this device's subscription
+    // If unsubscribing - set is_subscribed = false instead of deleting
     // Check explicitly for null (not just falsy) to distinguish from undefined
     if (subscription === null && subscriberId) {
       await supabase
         .from("push_subscriptions")
-        .delete()
+        .update({
+          is_subscribed: false,
+          updated_at: new Date().toISOString()
+        })
         .eq("user_id", user.id)
         .eq("subscriber_id", subscriberId);
 
       return NextResponse.json({
         success: true,
-        message: "Push subscription removed successfully",
+        message: "Push subscription disabled successfully",
       });
     }
 
@@ -49,28 +52,6 @@ export async function POST(request: NextRequest) {
       browser: getBrowserInfo(userAgent),
       createdAt: new Date().toISOString(),
     };
-
-    // Verify the player exists in OneSignal before saving
-    const verifyResponse = await fetch(`https://onesignal.com/api/v1/players/${subscriberId}?app_id=${process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID}`, {
-      method: "GET",
-      headers: {
-        "Authorization": `Basic ${process.env.ONESIGNAL_REST_API_KEY}`,
-      },
-    });
-
-    if (!verifyResponse.ok) {
-      const errorText = await verifyResponse.text();
-      console.error(`OneSignal player verification failed (${verifyResponse.status}):`, errorText);
-      return NextResponse.json(
-        {
-          error: "Player not found in OneSignal. The subscription may not have completed properly.",
-          details: `HTTP ${verifyResponse.status}`,
-        },
-        { status: 400 }
-      );
-    }
-
-    await verifyResponse.json();
 
     // Tag the OneSignal player with our user ID for targeting
     try {
@@ -104,11 +85,23 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (existing) {
-      // Update last_used_at
-      await supabase
+      // Subscription exists - just reactivate it
+      const { error: updateError } = await supabase
         .from("push_subscriptions")
-        .update({ last_used_at: new Date().toISOString() })
+        .update({
+          is_subscribed: true,
+          last_used_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
         .eq("id", existing.id);
+
+      if (updateError) {
+        console.error("Error updating push subscription:", updateError);
+        return NextResponse.json(
+          { error: "Failed to update subscription", details: updateError.message },
+          { status: 500 }
+        );
+      }
     } else {
       // Insert new subscription
       const { error: insertError } = await supabase
@@ -118,8 +111,10 @@ export async function POST(request: NextRequest) {
           subscriber_id: subscriberId,
           device_info: deviceInfo,
           subscription_data: {}, // OneSignal SDK manages subscription data
+          is_subscribed: true,
           created_at: new Date().toISOString(),
           last_used_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         });
 
       if (insertError) {
@@ -131,13 +126,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check if user has any existing push subscriptions
+    // Check if user has any existing ACTIVE push subscriptions
     const { data: userSubscriptions } = await supabase
       .from("push_subscriptions")
       .select("id")
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .eq("is_subscribed", true);
 
-    // Auto-enable push for all existing prayers (only if this is their first device)
+    // Auto-enable push for all existing prayers (only if this is their first active device)
     if (userSubscriptions && userSubscriptions.length === 1) {
       try {
         // Get all reminders for this user
