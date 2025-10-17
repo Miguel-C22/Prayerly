@@ -55,11 +55,17 @@ function ProfilePageClient({
   };
 
   const handleDeleteAccount = async () => {
-    const supabase = createClient();
-    const { error } = await supabase.auth.admin.deleteUser(
-      (await supabase.auth.getUser()).data.user?.id || ""
-    );
-    if (error) throw error;
+    // Call server-side API to delete account
+    const response = await fetch("/api/user/delete-account", {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to delete account");
+    }
+
+    // Redirect to home page
     router.push("/");
   };
 
