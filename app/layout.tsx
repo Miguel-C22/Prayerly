@@ -60,6 +60,13 @@ export default function RootLayout({
                 if (metaThemeColor) {
                   metaThemeColor.setAttribute('content', themeColor);
                 }
+
+                // Update status bar style based on theme
+                const statusBarStyle = theme === 'dark' ? 'black-translucent' : 'default';
+                const metaStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+                if (metaStatusBar) {
+                  metaStatusBar.setAttribute('content', statusBarStyle);
+                }
               })();
             `,
           }}

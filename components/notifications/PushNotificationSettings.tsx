@@ -56,20 +56,15 @@ export default function PushNotificationSettings() {
 
       window.OneSignalDeferred.push(async (OneSignal: any) => {
         try {
-          // Check current state before subscribing
-          const beforeState = {
-            optedIn: await OneSignal.User.PushSubscription.optedIn,
-            id: await OneSignal.User.PushSubscription.id,
-            token: await OneSignal.User.PushSubscription.token,
-          };
+          // Request native browser permission prompt
+          const permission = await OneSignal.Notifications.requestPermission();
 
-          // If already has an ID (previously subscribed), opt back in instead of creating new
-          if (beforeState.id) {
-            await OneSignal.User.PushSubscription.optIn();
-          } else {
-            // Request permission and subscribe (new user)
-            await OneSignal.Slidedown.promptPush();
+          if (permission === false) {
+            throw new Error("Permission denied. Please enable notifications in your browser settings.");
           }
+
+          // Opt in to push notifications
+          await OneSignal.User.PushSubscription.optIn();
 
           // Wait for subscription to complete and get ID
           // Poll for up to 10 seconds
