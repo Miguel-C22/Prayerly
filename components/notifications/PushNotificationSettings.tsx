@@ -13,43 +13,25 @@ declare global {
 
 export default function PushNotificationSettings() {
   const [isSupported, setIsSupported] = useState(false);
-  const { isSubscribed, setIsSubscribed, isLoading: isCheckingStatus } = usePushNotification();
+  const {
+    isSubscribed,
+    setIsSubscribed,
+    isLoading: isCheckingStatus,
+  } = usePushNotification();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [permissionState, setPermissionState] = useState<NotificationPermission>("default");
-
-  // Helper function to clear local OneSignal cache
-  const clearLocalCache = async () => {
-    try {
-      // Clear OneSignal localStorage
-      Object.keys(localStorage).forEach(key => {
-        if (key.includes('OneSignal') || key.includes('onesignal')) {
-          localStorage.removeItem(key);
-        }
-      });
-
-      // Clear OneSignal sessionStorage
-      Object.keys(sessionStorage).forEach(key => {
-        if (key.includes('OneSignal') || key.includes('onesignal')) {
-          sessionStorage.removeItem(key);
-        }
-      });
-
-      // Unregister OneSignal service workers
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      for (const registration of registrations) {
-        if (registration.active?.scriptURL.includes('OneSignal')) {
-          await registration.unregister();
-        }
-      }
-    } catch (error) {
-      console.error("Error clearing local cache:", error);
-    }
-  };
+  const [permissionState, setPermissionState] =
+    useState<NotificationPermission>("default");
 
   useEffect(() => {
     // Check browser support
-    if (!("Notification" in window && "serviceWorker" in navigator && "PushManager" in window)) {
+    if (
+      !(
+        "Notification" in window &&
+        "serviceWorker" in navigator &&
+        "PushManager" in window
+      )
+    ) {
       setIsSupported(false);
       return;
     }
@@ -97,7 +79,7 @@ export default function PushNotificationSettings() {
           const maxAttempts = 20; // 10 seconds (20 * 500ms)
 
           while ((!subscriberId || !token) && attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise((resolve) => setTimeout(resolve, 500));
             subscriberId = await OneSignal.User.PushSubscription.id;
             token = await OneSignal.User.PushSubscription.token;
             attempts++;
@@ -108,7 +90,9 @@ export default function PushNotificationSettings() {
           }
 
           if (!subscriberId) {
-            throw new Error("Failed to get subscription ID from OneSignal. Please try again.");
+            throw new Error(
+              "Failed to get subscription ID from OneSignal. Please try again."
+            );
           }
 
           // Send to our backend to save in database
@@ -129,13 +113,19 @@ export default function PushNotificationSettings() {
           setIsLoading(false);
         } catch (error) {
           console.error("OneSignal subscription error:", error);
-          setError(error instanceof Error ? error.message : "Failed to subscribe");
+          setError(
+            error instanceof Error ? error.message : "Failed to subscribe"
+          );
           setIsLoading(false);
         }
       });
     } catch (error) {
       console.error("Failed to subscribe:", error);
-      setError(error instanceof Error ? error.message : "Failed to subscribe. Please try again.");
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to subscribe. Please try again."
+      );
       setIsLoading(false);
     }
   };
@@ -158,9 +148,10 @@ export default function PushNotificationSettings() {
           await OneSignal.User.PushSubscription.optOut();
 
           // Also unregister the service worker to fully clean up
-          const registrations = await navigator.serviceWorker.getRegistrations();
+          const registrations =
+            await navigator.serviceWorker.getRegistrations();
           for (const registration of registrations) {
-            if (registration.active?.scriptURL.includes('OneSignal')) {
+            if (registration.active?.scriptURL.includes("OneSignal")) {
               await registration.unregister();
             }
           }
@@ -171,7 +162,7 @@ export default function PushNotificationSettings() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               subscription: null,
-              subscriberId: subscriberId
+              subscriberId: subscriberId,
             }),
           });
 
@@ -182,13 +173,13 @@ export default function PushNotificationSettings() {
           // Clear local state
           try {
             // Clear OneSignal specific storage
-            Object.keys(localStorage).forEach(key => {
-              if (key.includes('OneSignal') || key.includes('onesignal')) {
+            Object.keys(localStorage).forEach((key) => {
+              if (key.includes("OneSignal") || key.includes("onesignal")) {
                 localStorage.removeItem(key);
               }
             });
-            Object.keys(sessionStorage).forEach(key => {
-              if (key.includes('OneSignal') || key.includes('onesignal')) {
+            Object.keys(sessionStorage).forEach((key) => {
+              if (key.includes("OneSignal") || key.includes("onesignal")) {
                 sessionStorage.removeItem(key);
               }
             });
@@ -243,8 +234,14 @@ export default function PushNotificationSettings() {
             You previously blocked notifications for this site. To enable them:
           </p>
           <ul className="text-xs mt-2 ml-4 list-disc space-y-1">
-            <li><strong>Safari:</strong> Settings → Safari → Website Settings → Notifications → Allow</li>
-            <li><strong>Chrome:</strong> Click lock icon in address bar → Site settings → Notifications → Allow</li>
+            <li>
+              <strong>Safari:</strong> Settings → Safari → Website Settings →
+              Notifications → Allow
+            </li>
+            <li>
+              <strong>Chrome:</strong> Click lock icon in address bar → Site
+              settings → Notifications → Allow
+            </li>
           </ul>
         </div>
       )}
