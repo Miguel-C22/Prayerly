@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePushNotification } from "@/contexts/PushNotificationContext";
 
 // Extend window type for OneSignal
 declare global {
@@ -12,7 +13,7 @@ declare global {
 
 export default function PushNotificationSettings() {
   const [isSupported, setIsSupported] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const { isSubscribed, setIsSubscribed, isLoading: isCheckingStatus } = usePushNotification();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [permissionState, setPermissionState] = useState<NotificationPermission>("default");
@@ -59,70 +60,7 @@ export default function PushNotificationSettings() {
     if ("Notification" in window) {
       setPermissionState(Notification.permission);
     }
-
-    // Hybrid check: OneSignal SDK + Backend verification
-    const checkSubscription = async () => {
-      try {
-        if (!window.OneSignalDeferred) {
-          return;
-        }
-
-        window.OneSignalDeferred.push(async (OneSignal: any) => {
-          try {
-            // Wait for OneSignal to initialize
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            // Step 1: Check if THIS device has local subscription state
-            const optedIn = await OneSignal.User.PushSubscription.optedIn;
-            const subscriberId = await OneSignal.User.PushSubscription.id;
-            const token = await OneSignal.User.PushSubscription.token;
-
-            // If SDK says not subscribed locally, no need to check backend
-            if (!subscriberId || !token || !optedIn) {
-              setIsSubscribed(false);
-              return;
-            }
-
-            // Step 2: SDK says subscribed - verify with backend (source of truth)
-            try {
-              const response = await fetch(
-                `/api/user/push-subscription-status?subscriberId=${subscriberId}`
-              );
-
-              if (!response.ok) {
-                // If backend check fails, assume not subscribed
-                setIsSubscribed(false);
-                return;
-              }
-
-              const { isActive } = await response.json();
-
-              if (!isActive) {
-                // Backend says subscription is invalid - clear stale cache
-                console.log("Subscription not active in backend, clearing local cache");
-                await clearLocalCache();
-                setIsSubscribed(false);
-              } else {
-                // Both SDK and backend confirm subscription is active
-                setIsSubscribed(true);
-              }
-            } catch (backendError) {
-              console.error("Error verifying with backend:", backendError);
-              // If backend check fails, fall back to SDK state
-              setIsSubscribed(true);
-            }
-          } catch (error) {
-            console.error("Error checking OneSignal subscription:", error);
-            setIsSubscribed(false);
-          }
-        });
-      } catch (error) {
-        console.error("Error checking subscription status:", error);
-        setIsSubscribed(false);
-      }
-    };
-
-    checkSubscription();
+    // Note: Subscription status check is now handled by PushNotificationContext
   }, []);
 
   const handleSubscribe = async () => {
@@ -278,6 +216,14 @@ export default function PushNotificationSettings() {
       <div className="text-sm text-text-graySecondary">
         Push notifications are not supported in your browser. Please use Chrome,
         Firefox, Edge, or Safari 16+.
+      </div>
+    );
+  }
+
+  if (isCheckingStatus) {
+    return (
+      <div className="text-sm text-text-graySecondary">
+        Checking subscription status...
       </div>
     );
   }
