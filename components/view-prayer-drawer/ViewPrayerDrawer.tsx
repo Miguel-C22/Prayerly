@@ -2,7 +2,6 @@ import { Prayer } from "@/types/prayer";
 import React, { useState, useEffect } from "react";
 import Icon from "../icon/Icon";
 import PrayerCard from "../cards/PrayerCard";
-import BibleVerse from "../bible-verse/BibleVerse";
 import ReflectionForm from "../reflection/ReflectionForm";
 import ReflectionContainer from "../reflection/ReflectionContainer";
 import {
@@ -13,6 +12,7 @@ import {
 import { updatePrayer } from "@/utils/client/prayersClient";
 import { useRouter } from "next/navigation";
 import LoadingOverlay from "../loading/LoadingOverlay";
+import AIBibleVerse from "../bible-verse/AIBibleVerse";
 
 interface ViewPrayerDrawerProps {
   prayerDetails: Prayer | null;
@@ -39,6 +39,9 @@ function ViewPrayerDrawer({
   const [editableReflections, setEditableReflections] = useState<
     Record<string, string>
   >({});
+  const [currentPrayerDetails, setCurrentPrayerDetails] = useState<Prayer | null>(
+    prayerDetails
+  );
 
   // Load reflections when prayerDetails changes
   useEffect(() => {
@@ -68,12 +71,13 @@ function ViewPrayerDrawer({
     loadReflections();
     setHasChanges(false);
 
-    // Initialize editable prayer data
+    // Initialize editable prayer data and current prayer details
     if (prayerDetails) {
       setEditablePrayer({
         title: prayerDetails.title || "",
         description: prayerDetails.description || "",
       });
+      setCurrentPrayerDetails(prayerDetails);
     }
   }, [prayerDetails]);
 
@@ -126,6 +130,12 @@ function ViewPrayerDrawer({
         title: editablePrayer.title,
         description: editablePrayer.description,
       });
+      // Update currentPrayerDetails with the saved changes
+      setCurrentPrayerDetails((prev) => prev ? {
+        ...prev,
+        title: editablePrayer.title,
+        description: editablePrayer.description,
+      } : null);
       setHasChanges(true);
     } catch (error) {
       console.error("Failed to update prayer:", error);
@@ -151,7 +161,9 @@ function ViewPrayerDrawer({
       await savePrayer();
 
       // Save all changed reflections
-      for (const [reflectionId, newText] of Object.entries(editableReflections)) {
+      for (const [reflectionId, newText] of Object.entries(
+        editableReflections
+      )) {
         const originalReflection = currentReflections.find(
           (r) => r.id === reflectionId
         );
@@ -189,132 +201,138 @@ function ViewPrayerDrawer({
 
   return (
     <>
-      <LoadingOverlay isLoading={isMarkingAnswered} message="Marking as answered..." />
+      <LoadingOverlay
+        isLoading={isMarkingAnswered}
+        message="Marking as answered..."
+      />
       <LoadingOverlay isLoading={isSaving} message="Saving changes..." />
       <div className="drawer z-40">
         <input id="view-prayer" type="checkbox" className="drawer-toggle" />
         <div className="drawer-side">
-        <label
-          htmlFor="view-prayer"
-          aria-label="close sidebar"
-          className="drawer-overlay"
-        ></label>
-        <div className="text-base-content min-h-full w-full flex flex-col bg-backgrounds-light">
-          {/* Header with back button */}
-          <div className="flex place-content-between p-6 pb-0">
-            <div className="flex justify-between items-center mb-4">
-              <label
-                htmlFor="view-prayer"
-                className="btn btn-ghost text-text-grayPrimary flex items-center gap-2 hover:bg-transparent hover:shadow-none hover:scale-100 hover:border-transparent focus:border-transparent focus:outline-none"
-                onClick={closeDrawer}
-              >
-                <Icon icon="backArrow" className="w-5 h-5" />
-                Back
-              </label>
-            </div>
-            {editMode ? (
-              <div className="flex gap-2">
-                <button className="btn btn-ghost" onClick={cancelEditedChanges}>
-                  Cancel
-                </button>
-                <button className="btn btn-primary" onClick={saveAllChanges}>
-                  Save
-                </button>
+          <label
+            htmlFor="view-prayer"
+            aria-label="close sidebar"
+            className="drawer-overlay"
+          ></label>
+          <div className="text-base-content min-h-full w-full flex flex-col bg-backgrounds-light">
+            {/* Header with back button */}
+            <div className="flex place-content-between p-6 pb-0">
+              <div className="flex justify-between items-center mb-4">
+                <label
+                  htmlFor="view-prayer"
+                  className="btn btn-ghost text-text-grayPrimary flex items-center gap-2 hover:bg-transparent hover:shadow-none hover:scale-100 hover:border-transparent focus:border-transparent focus:outline-none"
+                  onClick={closeDrawer}
+                >
+                  <Icon icon="backArrow" className="w-5 h-5" />
+                  Back
+                </label>
               </div>
-            ) : (
-              <button className="btn" onClick={editPrayer}>
-                Edit
-              </button>
-            )}
-          </div>
+              {editMode ? (
+                <div className="flex gap-2">
+                  <button
+                    className="btn btn-ghost"
+                    onClick={cancelEditedChanges}
+                  >
+                    Cancel
+                  </button>
+                  <button className="btn btn-primary" onClick={saveAllChanges}>
+                    Save
+                  </button>
+                </div>
+              ) : (
+                <button className="btn" onClick={editPrayer}>
+                  Edit
+                </button>
+              )}
+            </div>
 
-          {/* Centered form content */}
-          <div className="pb-20 flex justify-center">
-            <div className="w-full mx-8 md:w-full lg:w-full 2xl:w-3/4 lg:px-0">
-              <div className="flex flex-col gap-4">
-                <PrayerCard
-                  key={prayerDetails?.id}
-                  id={prayerDetails?.id || ""}
-                  title={
-                    editMode ? editablePrayer.title : prayerDetails?.title || ""
-                  }
-                  description={
-                    editMode
-                      ? editablePrayer.description
-                      : prayerDetails?.description || ""
-                  }
-                  date={new Date(
-                    prayerDetails?.created_at || ""
-                  ).toLocaleDateString()}
-                  category={prayerDetails?.category || undefined}
-                  edit={editMode}
-                  hideBtn={true}
-                  onTitleChange={(title) =>
-                    setEditablePrayer((prev) => ({ ...prev, title }))
-                  }
-                  onDescriptionChange={(description) =>
-                    setEditablePrayer((prev) => ({ ...prev, description }))
-                  }
-                />
-                <BibleVerse
-                  verse="The prayer of a righteous person is powerful and effective."
-                  chapter="James 5:16"
-                />
-                <ReflectionForm
-                  prayerId={prayerDetails?.id || ""}
-                  onAddReflection={handleAddReflection}
-                />
-                {isLoading ? (
-                  <div className="flex justify-center py-8">
-                    <span className="loading loading-spinner text-primary"></span>
-                  </div>
-                ) : (
-                  <ReflectionContainer
-                    reflections={
+            {/* Centered form content */}
+            <div className="pb-20 flex justify-center">
+              <div className="w-full mx-8 md:w-full lg:w-full 2xl:w-3/4 lg:px-0">
+                <div className="flex flex-col gap-4">
+                  <PrayerCard
+                    key={currentPrayerDetails?.id}
+                    id={currentPrayerDetails?.id || ""}
+                    title={
                       editMode
-                        ? currentReflections.map((r) => ({
-                            ...r,
-                            reflection:
-                              editableReflections[r.id] !== undefined
-                                ? editableReflections[r.id]
-                                : r.reflection,
-                          }))
-                        : currentReflections
+                        ? editablePrayer.title
+                        : currentPrayerDetails?.title || ""
                     }
+                    description={
+                      editMode
+                        ? editablePrayer.description
+                        : currentPrayerDetails?.description || ""
+                    }
+                    date={new Date(
+                      currentPrayerDetails?.created_at || ""
+                    ).toLocaleDateString()}
+                    category={currentPrayerDetails?.category || undefined}
                     edit={editMode}
-                    onReflectionChange={(reflectionId, newText) =>
-                      setEditableReflections((prev) => ({
-                        ...prev,
-                        [reflectionId]: newText,
-                      }))
+                    hideBtn={true}
+                    onTitleChange={(title) =>
+                      setEditablePrayer((prev) => ({ ...prev, title }))
+                    }
+                    onDescriptionChange={(description) =>
+                      setEditablePrayer((prev) => ({ ...prev, description }))
                     }
                   />
-                )}
 
-                {/* Action Buttons */}
-                <div className="bg-backgrounds-white border border-border-gray rounded-lg p-6">
-                  <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4">
-                    <button
-                      className="btn bg-text-purplePrimary hover:bg-purple-600 text-white border-none sm:flex-1"
-                      onClick={markedAsAnswered}
-                    >
-                      <Icon icon="heart" className="w-4 h-4" />
-                      Mark as Answered
-                    </button>
-                    <button
-                      className="btn btn-outline border-border-gray text-text-grayPrimary hover:bg-backgrounds-grayLight sm:flex-1"
-                      onClick={handleClick}
-                    >
-                      <Icon icon="bible" className="w-4 h-4" />
-                      View All Reflections
-                    </button>
+                  {!editMode && <AIBibleVerse prayerDetails={currentPrayerDetails} />}
+                  <ReflectionForm
+                    prayerId={prayerDetails?.id || ""}
+                    onAddReflection={handleAddReflection}
+                  />
+                  {isLoading ? (
+                    <div className="flex justify-center py-8">
+                      <span className="loading loading-spinner text-primary"></span>
+                    </div>
+                  ) : (
+                    <ReflectionContainer
+                      reflections={
+                        editMode
+                          ? currentReflections.map((r) => ({
+                              ...r,
+                              reflection:
+                                editableReflections[r.id] !== undefined
+                                  ? editableReflections[r.id]
+                                  : r.reflection,
+                            }))
+                          : currentReflections
+                      }
+                      edit={editMode}
+                      onReflectionChange={(reflectionId, newText) =>
+                        setEditableReflections((prev) => ({
+                          ...prev,
+                          [reflectionId]: newText,
+                        }))
+                      }
+                    />
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="bg-backgrounds-white border border-border-gray rounded-lg p-6">
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4">
+                      <button
+                        className="btn bg-text-purplePrimary hover:bg-purple-600 text-white border-none sm:flex-1"
+                        onClick={markedAsAnswered}
+                      >
+                        <Icon icon="heart" className="w-4 h-4" />
+                        Mark as Answered
+                      </button>
+                      <button
+                        className="btn btn-outline border-border-gray text-text-grayPrimary hover:bg-backgrounds-grayLight sm:flex-1"
+                        onClick={handleClick}
+                      >
+                        <Icon icon="bible" className="w-4 h-4" />
+                        View All Reflections
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
       </div>
     </>
   );
