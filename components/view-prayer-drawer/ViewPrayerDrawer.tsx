@@ -39,9 +39,8 @@ function ViewPrayerDrawer({
   const [editableReflections, setEditableReflections] = useState<
     Record<string, string>
   >({});
-  const [currentPrayerDetails, setCurrentPrayerDetails] = useState<Prayer | null>(
-    prayerDetails
-  );
+  const [currentPrayerDetails, setCurrentPrayerDetails] =
+    useState<Prayer | null>(prayerDetails);
 
   // Load reflections when prayerDetails changes
   useEffect(() => {
@@ -131,11 +130,15 @@ function ViewPrayerDrawer({
         description: editablePrayer.description,
       });
       // Update currentPrayerDetails with the saved changes
-      setCurrentPrayerDetails((prev) => prev ? {
-        ...prev,
-        title: editablePrayer.title,
-        description: editablePrayer.description,
-      } : null);
+      setCurrentPrayerDetails((prev) =>
+        prev
+          ? {
+              ...prev,
+              title: editablePrayer.title,
+              description: editablePrayer.description,
+            }
+          : null
+      );
       setHasChanges(true);
     } catch (error) {
       console.error("Failed to update prayer:", error);
@@ -277,7 +280,18 @@ function ViewPrayerDrawer({
                     }
                   />
 
-                  {!editMode && <AIBibleVerse prayerDetails={currentPrayerDetails} />}
+                  {!editMode && (
+                    <div>
+                      <AIBibleVerse
+                        prayerDetails={currentPrayerDetails}
+                        generateType="verses"
+                      />
+                      <AIBibleVerse
+                        prayerDetails={currentPrayerDetails}
+                        generateType="prayer"
+                      />
+                    </div>
+                  )}
                   <ReflectionForm
                     prayerId={prayerDetails?.id || ""}
                     onAddReflection={handleAddReflection}
