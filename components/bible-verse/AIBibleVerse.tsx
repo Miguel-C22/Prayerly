@@ -46,6 +46,7 @@ export default function AIBibleVerse({
     setGeneratedVerses([]);
     setVerseError("");
     setExcludedVerseRefs([]);
+    setPrayerExampleRef("");
   }, [prayerDetails]);
 
   const handleSubmit = (generate: boolean) => {
