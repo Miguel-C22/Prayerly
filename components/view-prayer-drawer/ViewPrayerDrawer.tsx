@@ -281,15 +281,25 @@ function ViewPrayerDrawer({
                   />
 
                   {!editMode && (
-                    <div>
-                      <AIBibleVerse
-                        prayerDetails={currentPrayerDetails}
-                        generateType="verses"
-                      />
-                      <AIBibleVerse
-                        prayerDetails={currentPrayerDetails}
-                        generateType="prayer"
-                      />
+                    <div className="flex flex-col gap-6">
+                      <div className="flex flex-col gap-3">
+                        <h3 className="text-lg font-semibold text-text-grayPrimary">
+                          Related Bible Verses
+                        </h3>
+                        <AIBibleVerse
+                          prayerDetails={currentPrayerDetails}
+                          generateType="verses"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-3">
+                        <h3 className="text-lg font-semibold text-text-grayPrimary">
+                          AI-Generated Prayer
+                        </h3>
+                        <AIBibleVerse
+                          prayerDetails={currentPrayerDetails}
+                          generateType="prayer"
+                        />
+                      </div>
                     </div>
                   )}
                   <ReflectionForm

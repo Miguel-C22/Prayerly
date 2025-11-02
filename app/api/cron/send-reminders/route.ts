@@ -20,7 +20,8 @@ export async function GET(request: Request) {
     // Get all reminders due now (regardless of channel)
     const { data: dueReminders, error } = await supabase
       .from("reminders")
-      .select(`
+      .select(
+        `
         *,
         prayers (
           id,
@@ -28,7 +29,8 @@ export async function GET(request: Request) {
           description,
           category
         )
-      `)
+      `
+      )
       .lte("next_run_at", now.toISOString())
       .eq("is_active", true);
 
@@ -70,31 +72,34 @@ export async function GET(request: Request) {
     for (const [userId, channels] of grouped.entries()) {
       for (const [channel, reminders] of channels.entries()) {
         try {
-          if (channel === 'email') {
+          if (channel === "email") {
             await sendBatchedEmailReminder(reminders);
             results.push({
               user_id: userId,
-              channel: 'email',
+              channel: "email",
               count: reminders.length,
-              status: "sent"
+              status: "sent",
             });
-          } else if (channel === 'push') {
+          } else if (channel === "push") {
             await sendBatchedPushReminder(reminders);
             results.push({
               user_id: userId,
-              channel: 'push',
+              channel: "push",
               count: reminders.length,
-              status: "sent"
+              status: "sent",
             });
           }
         } catch (error) {
-          console.error(`Failed to send ${channel} reminder for user ${userId}:`, error);
+          console.error(
+            `Failed to send ${channel} reminder for user ${userId}:`,
+            error
+          );
           results.push({
             user_id: userId,
             channel,
             count: reminders.length,
             status: "failed",
-            error: String(error)
+            error: String(error),
           });
         }
       }
@@ -128,16 +133,17 @@ async function sendBatchedEmailReminder(reminders: any[]) {
   }
 
   // Collect all prayers
-  const prayers = reminders.map(reminder => ({
+  const prayers = reminders.map((reminder) => ({
     title: reminder.prayers?.title || "Your Prayer",
     description: reminder.prayers?.description || "",
     category: reminder.prayers?.category || "",
   }));
 
   // Send one email with all prayers
-  const subject = prayers.length === 1
-    ? `Prayer Reminder: ${prayers[0].title}`
-    : `Prayer Reminders: ${prayers.length} prayers`;
+  const subject =
+    prayers.length === 1
+      ? `Prayer Reminder: ${prayers[0].title}`
+      : `Prayer Reminders: ${prayers.length} prayers`;
 
   const { data, error } = await resend.emails.send({
     from: "Prayerly <reminders@resend.dev>",
@@ -156,9 +162,13 @@ async function sendBatchedEmailReminder(reminders: any[]) {
     await logSupabase.from("reminder_logs").insert({
       reminder_id: reminder.id,
       sent_at: new Date().toISOString(),
-      channel: 'email',
+      channel: "email",
       status: "sent",
-      metadata: { resend_id: data?.id, batched: true, batch_size: reminders.length },
+      metadata: {
+        resend_id: data?.id,
+        batched: true,
+        batch_size: reminders.length,
+      },
     });
   }
 }
@@ -184,7 +194,7 @@ async function sendBatchedPushReminder(reminders: any[]) {
     throw new Error("No active push subscriptions found for user");
   }
 
-  const playerIds = subscriptions.map(sub => sub.subscriber_id);
+  const playerIds = subscriptions.map((sub) => sub.subscriber_id);
 
   // Format message based on number of prayers
   let title: string;
@@ -192,17 +202,18 @@ async function sendBatchedPushReminder(reminders: any[]) {
 
   if (reminders.length === 1) {
     const prayer = reminders[0].prayers || {};
-    title = `Prayer Reminder: ${prayer.title || 'Your Prayer'}`;
-    message = prayer.description || 'Time to pray for your request';
+    title = `Prayer Reminder: ${prayer.title || "Your Prayer"}`;
+    message = prayer.description || "Time to pray for your request";
   } else {
     title = `Prayer Reminders: ${reminders.length} prayers`;
     const prayerTitles = reminders
       .slice(0, 3)
-      .map(r => r.prayers?.title || 'Prayer')
-      .join(', ');
-    message = reminders.length > 3
-      ? `${prayerTitles}, and ${reminders.length - 3} more...`
-      : prayerTitles;
+      .map((r) => r.prayers?.title || "Prayer")
+      .join(", ");
+    message =
+      reminders.length > 3
+        ? `${prayerTitles}, and ${reminders.length - 3} more...`
+        : prayerTitles;
   }
 
   // Send to ALL user devices using OneSignal
@@ -213,22 +224,22 @@ async function sendBatchedPushReminder(reminders: any[]) {
 
   try {
     // Call OneSignal REST API to send notification
-    const response = await fetch('https://onesignal.com/api/v1/notifications', {
-      method: 'POST',
+    const response = await fetch("https://onesignal.com/api/v1/notifications", {
+      method: "POST",
       headers: {
-        'Authorization': `Basic ${process.env.ONESIGNAL_REST_API_KEY}`,
-        'Content-Type': 'application/json',
+        Authorization: `Basic ${process.env.ONESIGNAL_REST_API_KEY}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         app_id: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID,
         include_player_ids: playerIds,
         headings: { en: title },
         contents: { en: message },
-        url: 'https://prayerly-livid.vercel.app/prayers',
+        url: "https://prayerly-livid.vercel.app/prayers",
         // Optional: Add custom data
         data: {
           prayer_count: reminders.length,
-          type: 'prayer_reminder',
+          type: "prayer_reminder",
         },
       }),
     });
@@ -243,7 +254,7 @@ async function sendBatchedPushReminder(reminders: any[]) {
     console.log(`OneSignal response:`, {
       id: responseData.id,
       recipients: responseData.recipients,
-      errors: responseData.errors
+      errors: responseData.errors,
     });
   } catch (error) {
     console.error(`Failed to send push notification:`, error);
@@ -256,7 +267,7 @@ async function sendBatchedPushReminder(reminders: any[]) {
     await logSupabase.from("reminder_logs").insert({
       reminder_id: reminder.id,
       sent_at: new Date().toISOString(),
-      channel: 'push',
+      channel: "push",
       status: "sent",
       metadata: {
         batched: true,
@@ -282,10 +293,7 @@ async function updateNextRunTime(reminder: any, supabase: any) {
     updateData.occurrence_count = reminder.occurrence_count - 1;
   }
 
-  await supabase
-    .from("reminders")
-    .update(updateData)
-    .eq("id", reminder.id);
+  await supabase.from("reminders").update(updateData).eq("id", reminder.id);
 }
 
 function calculateNextRun(reminder: any): Date | null {
@@ -294,10 +302,10 @@ function calculateNextRun(reminder: any): Date | null {
     ? new Date(reminder.next_run_at)
     : now;
 
-  // Parse time_of_day (HH:MM:SS format)
-  const [hours, minutes] = reminder.time_of_day
-    ? reminder.time_of_day.split(":").map(Number)
-    : [9, 0]; // Default to 9 AM
+  // Parse time from REMINDER_TIME env variable (HH:MM format, defaults to 15:00)
+  // When updating or changing the reminder time you need to update the Supabase reminder table and the cron-job.org
+  const reminderTime = process.env.REMINDER_TIME || "15:00";
+  const [hours, minutes] = reminderTime.split(":").map(Number);
 
   switch (reminder.recurrence_type) {
     case "single":
