@@ -1,17 +1,21 @@
 import React from "react";
 import { HeaderContent } from "./Header";
+import Button from "@/components/ui/button/Button";
 
 export const homeContent: HeaderContent = {
   title: "Prayer Requests",
   subtitle: "Your conversations with God",
   customButton: () => (
-    <label
-      htmlFor="add-prayer"
-      className="btn btn-primary  px-3 flex items-center gap-4"
+    <Button
+      onClick={() => {
+        const checkbox = document.getElementById("add-prayer") as HTMLInputElement;
+        if (checkbox) checkbox.checked = true;
+      }}
+      icon={<span>+</span>}
+      iconPosition="left"
     >
-      <span>+</span>
       Add Prayer
-    </label>
+    </Button>
   ),
 };
 

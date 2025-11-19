@@ -1,6 +1,54 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+
+    // Get the current user
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get prayer_id from query params
+    const searchParams = request.nextUrl.searchParams;
+    const prayer_id = searchParams.get("prayer_id");
+
+    if (!prayer_id) {
+      return NextResponse.json(
+        { error: "Prayer ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Fetch reminder for this prayer
+    const { data, error } = await supabase
+      .from("reminders")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("prayer_id", prayer_id)
+      .single();
+
+    if (error) {
+      // No reminder found is not an error - return null
+      return NextResponse.json({ reminder: null }, { status: 200 });
+    }
+
+    return NextResponse.json({ reminder: data }, { status: 200 });
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();

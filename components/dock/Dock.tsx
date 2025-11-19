@@ -10,7 +10,7 @@ import {
   profileContent,
 } from "../header/headerContent";
 import { useRouter, usePathname } from "next/navigation";
-import Icon from "@/components/icon/Icon";
+import Icon from "@/components/ui/icon/Icon";
 
 interface DockProps {
   setHeaderContent: React.Dispatch<React.SetStateAction<HeaderContent>>;
@@ -57,7 +57,16 @@ function Dock({ setHeaderContent }: DockProps) {
     }
 
     setHeaderContent(content);
-    router.push(route);
+
+    // Preserve URL parameters when navigating to any page
+    // This keeps filters in the URL even when visiting Reminders/Profile
+    // so they're restored when returning to Home/Journal
+    const currentParams = window.location.search;
+    if (currentParams) {
+      router.push(route + currentParams);
+    } else {
+      router.push(route);
+    }
   };
 
   return (

@@ -1,8 +1,10 @@
 import React, { useState } from "react";
-import Icon from "@/components/icon/Icon";
+import Icon from "@/components/ui/icon/Icon";
 import reflectionSubmission from "@/utils/reflectionSubmission";
 import { UIReflection } from "@/utils/client/reflectionsClient";
-import LoadingOverlay from "../loading/LoadingOverlay";
+import LoadingOverlay from "@/components/ui/loading/LoadingOverlay";
+import Button from "@/components/ui/button/Button";
+import TextArea from "@/components/ui/text-area/TextArea";
 
 interface ReflectionFormProps {
   prayerId: string;
@@ -50,21 +52,23 @@ function ReflectionForm({ prayerId, onAddReflection }: ReflectionFormProps) {
       </div>
 
       {/* Textarea */}
-      <textarea
-        className="textarea textarea-bordered w-full h-32 resize-none mb-4"
-        placeholder="Write your thoughts, feelings, or any updates about this prayer request..."
-        value={reflection}
-        onChange={(e) => setReflection(e.target.value)}
-      />
+      <div className="mb-4">
+        <TextArea
+          placeholder="Write your thoughts, feelings, or any updates about this prayer request..."
+          value={reflection}
+          setValue={setReflection}
+          rows={8}
+        />
+      </div>
 
       {/* Save Button */}
-      <button
-        className="btn bg-text-purplePrimary hover:bg-purple-600 text-white border-none"
+      <Button
+        variant="primary"
         onClick={handleSave}
         disabled={!reflection.trim()}
       >
         Save Reflection
-      </button>
+      </Button>
       </div>
     </>
   );

@@ -28,12 +28,13 @@ async function prayerSubmission({
       }
     );
 
-    if (recurrenceType && data.prayer.id) {
+    if (recurrenceType && recurrenceType !== 'none' && data.prayer.id) {
       await axios.post(
         "/api/reminders",
         {
           prayer_id: data.prayer.id,
           recurrence_type: recurrenceType,
+          channels: ['email'], // Default to email reminders
         },
         {
           headers: {

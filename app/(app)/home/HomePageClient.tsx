@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import PrayerRequestDrawer from "@/components/add-prayer-drawer/PrayerDrawer";
-import BibleVerse from "@/components/bible-verse/BibleVerse";
-import PrayerCard from "@/components/cards/PrayerCard";
+import PrayerRequestDrawer from "@/components/prayer/add-prayer/PrayerDrawer";
+import BibleVerse from "@/components/bible/BibleVerse";
+import ContentCard from "@/components/ui/cards/ContentCard";
 import useTabs from "@/hooks/useTabs";
 import { Prayer } from "@/types/prayer";
 import {
@@ -11,18 +11,35 @@ import {
   getSinglePrayerClient,
   deletePrayer,
 } from "@/utils/client/prayersClient";
-import ViewPrayerDrawer from "@/components/view-prayer-drawer/ViewPrayerDrawer";
+import ViewPrayerDrawer from "@/components/prayer/view-prayer/ViewPrayerDrawer";
+import FilterBar from "@/components/filters/FilterBar";
+import BulkActionBar from "@/components/filters/BulkActionBar";
+import { usePrayerFilters } from "@/hooks/usePrayerFilters";
+import { useBulkSelection } from "@/hooks/useBulkSelection";
+import { deletePrayersAction } from "@/app/actions/prayerActions";
+import { getPrayersFilteredClient } from "@/utils/client/getPrayersFilteredClient";
 
-interface HomePageClientProps {
-  initialPrayers: Prayer[];
-}
-
-export default function HomePageClient({
-  initialPrayers,
-}: HomePageClientProps) {
-  const [prayers, setPrayers] = useState<Prayer[]>(initialPrayers);
+export default function HomePageClient() {
+  const [prayers, setPrayers] = useState<Prayer[]>([]);
   const [selectedPrayerId, setSelectedPrayerId] = useState<string>("");
   const [selectedPrayer, setSelectedPrayer] = useState<Prayer | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+
+  // Filter hooks
+  const filters = usePrayerFilters();
+
+  // Bulk selection hooks
+  const bulkSelection = useBulkSelection(prayers);
+
+  // Toggle selection mode
+  const handleToggleSelectionMode = () => {
+    setSelectionMode(!selectionMode);
+    if (selectionMode) {
+      // Exiting selection mode, clear selections
+      bulkSelection.clearSelection();
+    }
+  };
 
   const activePrayers = prayers.filter((p) => !p.is_answered && !p.is_archived);
   const answeredPrayers = prayers.filter((p) => p.is_answered);
@@ -92,6 +109,52 @@ export default function HomePageClient({
     }
   };
 
+  const handleBulkDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const selectedIds = bulkSelection.getSelectedIds();
+      const result = await deletePrayersAction(selectedIds);
+
+      if (result.success) {
+        // Optimistically remove from UI
+        setPrayers((prev) => prev.filter((p) => !selectedIds.includes(p.id)));
+        bulkSelection.clearSelection();
+        setSelectionMode(false); // Exit selection mode
+      } else {
+        alert(`Failed to delete prayers: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error deleting prayers:", error);
+      alert("Failed to delete prayers. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Fetch filtered prayers when filters change
+  useEffect(() => {
+    const fetchFilteredPrayers = async () => {
+      try {
+        // Map selectedTab to status for API
+        let status: "active" | "answered" | "archived" | "all" = "active";
+        if (selectedTab === "Answered") status = "answered";
+        else if (selectedTab === "Archived") status = "archived";
+        else status = "active";
+
+        const filteredPrayers = await getPrayersFilteredClient({
+          searchQuery: filters.searchQuery,
+          categories: filters.categories,
+          status,
+        });
+        setPrayers(filteredPrayers);
+      } catch (error) {
+        console.error("Error fetching filtered prayers:", error);
+      }
+    };
+
+    fetchFilteredPrayers();
+  }, [filters.searchQuery, filters.categories, selectedTab]);
+
   useEffect(() => {
     if (selectedPrayerId) {
       handleViewDetails();
@@ -101,15 +164,41 @@ export default function HomePageClient({
   return (
     <div className="flex flex-col gap-8">
       <PrayerRequestDrawer onPrayerSubmitted={handlePrayerSubmitted} />
+
+      {/* Filter Bar */}
+      <FilterBar
+        searchQuery={filters.searchQuery}
+        onSearchChange={filters.setSearchQuery}
+        selectedCategories={filters.categories}
+        onToggleCategory={filters.toggleCategory}
+        onRemoveCategory={filters.removeCategory}
+        onClearSearch={() => filters.setSearchQuery("")}
+        onClearAll={filters.clearFilters}
+        selectionMode={selectionMode}
+        onToggleSelectionMode={handleToggleSelectionMode}
+      />
+
       <BibleVerse
         verse="The prayer of a righteous person is powerful and effective."
         chapter="James 5:16"
       />
+
+      {/* Bulk Action Bar - only show when items are selected */}
+      {bulkSelection.hasSelection && (
+        <BulkActionBar
+          selectionCount={bulkSelection.selectionCount}
+          onClearSelection={bulkSelection.clearSelection}
+          onDeleteSelected={handleBulkDelete}
+          isDeleting={isDeleting}
+        />
+      )}
+
       <div className="flex flex-col gap-4">
         {displayTabs()}
-        <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {getFilteredPrayers().map((prayer) => (
-            <PrayerCard
+            <ContentCard
+              variant="prayer"
               key={prayer.id}
               id={prayer.id}
               title={prayer.title}
@@ -118,6 +207,9 @@ export default function HomePageClient({
               category={prayer.category || undefined}
               setSelectedPrayerId={setSelectedPrayerId}
               onDelete={handleDeletePrayer}
+              selectable={selectionMode}
+              isSelected={bulkSelection.isSelected(prayer.id)}
+              onToggleSelection={bulkSelection.toggleSelection}
             />
           ))}
         </div>

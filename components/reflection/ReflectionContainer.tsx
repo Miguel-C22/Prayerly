@@ -1,5 +1,5 @@
 import React from "react";
-import ReflectionCard from "@/components/cards/ReflectionCard";
+import ContentCard from "@/components/ui/cards/ContentCard";
 import { UIReflection } from "@/utils/client/reflectionsClient";
 
 interface ReflectionContainerProps {
@@ -25,8 +25,10 @@ function ReflectionContainer({
       <div className="space-y-4">
         {displayReflections?.length > 0 ? (
           displayReflections.map((reflection) => (
-            <ReflectionCard
+            <ContentCard
+              variant="reflection"
               key={reflection.id}
+              id={reflection.id}
               date={reflection.date}
               reflection={reflection.reflection}
               edit={edit}

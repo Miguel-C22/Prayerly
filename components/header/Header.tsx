@@ -1,5 +1,4 @@
 import React from "react";
-import ThemeToggle from "../theme-toggle/ThemeToggle";
 
 export interface HeaderContent {
   title?: string;
@@ -24,10 +23,7 @@ function Header({ headerContent }: HeaderProps) {
           {headerContent?.subtitle || "Your personal prayer companion."}
         </p>
       </div>
-      <div className="flex items-center gap-4">
-        <ThemeToggle />
-        {CustomButton && <CustomButton />}
-      </div>
+      {CustomButton && <CustomButton />}
     </div>
   );
 }

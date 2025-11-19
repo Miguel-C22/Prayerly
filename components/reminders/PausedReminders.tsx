@@ -1,5 +1,5 @@
 import React from "react";
-import ReminderCard from "../cards/ReminderCard";
+import ReminderCard from "@/components/ui/cards/ReminderCard";
 import { RemindersPageClientProps } from "@/app/(app)/reminders/RemindersPageClient";
 
 interface PausedRemindersProps extends RemindersPageClientProps {

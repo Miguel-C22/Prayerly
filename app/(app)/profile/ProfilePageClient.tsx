@@ -1,9 +1,8 @@
 "use client";
 
-import ProfileCard from "@/components/cards/ProfileCard";
-import AccountInfoCard from "@/components/cards/AccountInfoCard";
-import SecurityCard from "@/components/cards/SecurityCard";
-import DataPrivacyCard from "@/components/cards/DataPrivacyCard";
+import ProfileCard from "@/components/ui/cards/ProfileCard";
+import SettingsCard from "@/components/ui/cards/SettingsCard";
+import Icon from "@/components/ui/icon/Icon";
 import { Prayer } from "@/types/prayer";
 import React from "react";
 import { ReflectionEntry } from "../journal/JournalPageClient";
@@ -24,6 +23,7 @@ function ProfilePageClient({
   reflections,
 }: ProfilePageClientProps) {
   const router = useRouter();
+  const [securityError, setSecurityError] = React.useState("");
 
   const handleUpdateProfile = async (name: string, email: string) => {
     const supabase = createClient();
@@ -35,15 +35,29 @@ function ProfilePageClient({
     router.refresh();
   };
 
-  const handleChangePassword = async (
-    currentPassword: string,
-    newPassword: string
-  ) => {
+  const handleChangePassword = async (formData: Record<string, string>) => {
+    setSecurityError("");
+
+    const { newPassword, confirmPassword } = formData;
+
+    if (newPassword !== confirmPassword) {
+      setSecurityError("New passwords do not match");
+      throw new Error("New passwords do not match");
+    }
+
+    if (newPassword.length < 6) {
+      setSecurityError("New password must be at least 6 characters");
+      throw new Error("New password must be at least 6 characters");
+    }
+
     const supabase = createClient();
     const { error } = await supabase.auth.updateUser({
       password: newPassword,
     });
-    if (error) throw error;
+    if (error) {
+      setSecurityError(error.message);
+      throw error;
+    }
   };
 
   const handleExportJournal = async () => {
@@ -86,21 +100,57 @@ function ProfilePageClient({
       />
 
       {/* Account Information */}
-      <AccountInfoCard
-        currentName={userName}
-        currentEmail={email}
-        onUpdateProfile={handleUpdateProfile}
+      <SettingsCard
+        variant="form"
+        title="Account Information"
+        icon="profile"
+        fields={[
+          { name: "name", type: "text", placeholder: "Full Name", value: userName, required: true },
+          { name: "email", type: "email", placeholder: "Email Address", value: email, required: true }
+        ]}
+        onSubmit={async (formData) => await handleUpdateProfile(formData.name, formData.email)}
+        submitButtonText="Update Profile"
       />
 
       {/* Security */}
-      <SecurityCard onChangePassword={handleChangePassword} />
+      <SettingsCard
+        variant="form"
+        title="Security"
+        icon="close"
+        fields={[
+          { name: "currentPassword", type: "password", placeholder: "Enter current password", value: "", required: true },
+          { name: "newPassword", type: "password", placeholder: "Enter new password", value: "", required: true },
+          { name: "confirmPassword", type: "password", placeholder: "Confirm new password", value: "", required: true }
+        ]}
+        onSubmit={handleChangePassword}
+        submitButtonText="Change Password"
+        errorMessage={securityError}
+      />
 
       {/* Data & Privacy */}
-      <DataPrivacyCard
-        onExportJournal={handleExportJournal}
-        onDownloadData={handleDownloadData}
-        onDeleteAccount={handleDeleteAccount}
-        onSignOut={handleSignOut}
+      <SettingsCard
+        variant="actions"
+        title="Data & Privacy"
+        icon="backArrow"
+        actions={[
+          { label: "Export Prayer Journal (PDF)", onClick: handleExportJournal, variant: "outline" },
+          { label: "Download All Data", onClick: handleDownloadData, variant: "outline" },
+          { label: "Delete Account", onClick: async () => {
+              if (window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+                await handleDeleteAccount();
+              }
+            }, variant: "danger" }
+        ]}
+      />
+
+      {/* Sign Out */}
+      <SettingsCard
+        variant="actions"
+        title="Sign Out"
+        icon="backArrow"
+        actions={[
+          { label: "Sign Out", onClick: handleSignOut, variant: "outline", icon: <Icon icon="backArrow" className="w-5 h-5" /> }
+        ]}
       />
     </div>
   );

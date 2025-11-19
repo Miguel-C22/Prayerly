@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { usePushNotification } from "@/contexts/PushNotificationContext";
+import Button from "@/components/ui/button/Button";
 
 // Extend window type for OneSignal
 declare global {
@@ -249,13 +250,14 @@ export default function PushNotificationSettings() {
               Push notifications enabled
             </p>
           </div>
-          <button
+          <Button
             onClick={handleUnsubscribe}
-            disabled={isLoading}
-            className="px-4 py-2 text-sm border border-text-grayTertiary rounded-lg hover:bg-backgrounds-grayHover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            variant="outline"
+            size="sm"
+            loading={isLoading}
           >
-            {isLoading ? "Disabling..." : "Disable Push Notifications"}
-          </button>
+            Disable Push Notifications
+          </Button>
         </>
       ) : (
         <>
@@ -263,13 +265,14 @@ export default function PushNotificationSettings() {
             Enable push notifications to get prayer reminders directly in your
             browser, even when the app is closed.
           </p>
-          <button
+          <Button
             onClick={handleSubscribe}
-            disabled={isLoading}
-            className="px-4 py-2 text-sm bg-backgrounds-purplePrimary text-white rounded-lg hover:bg-backgrounds-purpleSecondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            variant="primary"
+            size="sm"
+            loading={isLoading}
           >
-            {isLoading ? "Enabling..." : "Enable Push Notifications"}
-          </button>
+            Enable Push Notifications
+          </Button>
         </>
       )}
     </div>

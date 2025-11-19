@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { PushNotificationProvider } from "@/contexts/PushNotificationContext";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -73,16 +74,18 @@ export default function RootLayout({
         />
       </head>
       <body className={`${geistSans.className} antialiased`}>
-        <ThemeProvider
-          attribute="data-theme"
-          defaultTheme="dark"
-          enableSystem={false}
-          disableTransitionOnChange
-        >
-          <PushNotificationProvider>
-            <div>{children}</div>
-          </PushNotificationProvider>
-        </ThemeProvider>
+        <NuqsAdapter>
+          <ThemeProvider
+            attribute="data-theme"
+            defaultTheme="dark"
+            enableSystem={false}
+            disableTransitionOnChange
+          >
+            <PushNotificationProvider>
+              <div>{children}</div>
+            </PushNotificationProvider>
+          </ThemeProvider>
+        </NuqsAdapter>
       </body>
     </html>
   );

@@ -3,9 +3,9 @@ import React from "react";
 import RemindersPageClient from "./RemindersPageClient";
 import { getReminders } from "@/utils/server/remindersServer";
 import { getPrayers } from "@/utils/server/prayersServer";
-import Icon from "@/components/icon/Icon";
+import Icon from "@/components/ui/icon/Icon";
 import PushNotificationSettings from "@/components/notifications/PushNotificationSettings";
-import OneSignalLoader from "@/components/OneSignalLoader";
+import OneSignalLoader from "@/components/notifications/OneSignalLoader";
 
 async function page() {
   const reminders = await getReminders();

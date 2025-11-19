@@ -107,3 +107,20 @@ export async function updateReflection(
     return null;
   }
 }
+
+export async function deleteReflection(reflectionId: string): Promise<boolean> {
+  try {
+    const response = await fetch(`/api/reflections/${reflectionId}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to delete reflection");
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting reflection:", error);
+    return false;
+  }
+}
